@@ -3,7 +3,7 @@
   "name": "Credible: Agentic Fact-Checker",
   "version": "1.0.0",
   "description": "Provides real-time credibility signals on search results using Agentic verification logic.",
-  
+
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -22,10 +22,16 @@
     }
   ],
 
-  "permissions": ["activeTab","contextMenus"],
+  "permissions": ["activeTab", "contextMenus"],
 
   "background": {
-    "service_worker": "background.js" 
+    "service_worker": "background.js"
+  },
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icons/icon48.png",
+    "default_title": "Credible: Full Scan"
   },
 
   "host_permissions": [
