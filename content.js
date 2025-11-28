@@ -95,39 +95,53 @@ async function sendDataToBackend(data, userQuery) {
   }
 }
 
-// --- 4. RENDERING LOGIC (Updated for Final Tags) ---
+// --- 4. RENDERING LOGIC (FINAL PRODUCTION VERSION) ---
 function injectVerdictsIntoPage(verdicts) {
-  let injectedCount = 0;
+    let injectedCount = 0;
 
-  verdicts.forEach((verdict) => {
-    const linkElement = CACHED_LINKS.get(verdict.url);
+    verdicts.forEach((verdict) => {
+        const linkElement = CACHED_LINKS.get(verdict.url);
 
-    if (linkElement && verdict.label) {
-      // ... (BDI and tag creation remains the same) ...
+        // Check if a tag should be displayed (must have a valid link and a label, which is always true unless UNSCORED)
+        if (linkElement && verdict.label) {
+            
+            // 1. Determine the CSS Class based on the FINAL 'label'
+            let tagClass = "tag-unscored-default"; 
 
-      // --- Determine the CSS Class based on verdict status (NEW LOGIC) ---
-      let tagClass = "tag-unscored-default"; // Default: UNSCORED
+            if (verdict.label === "VERIFIED") {
+                tagClass = "tag-verified-authority"; // Green
+            } else if (verdict.label === "REPUTABLE") {
+                tagClass = "tag-reputable-quality"; // Blue
+            } 
 
-      if (verdict.label === "VERIFIED") {
-        tagClass = "tag-verified-authority"; // Green
-      } else if (verdict.label === "REPUTABLE") {
-        tagClass = "tag-reputable-quality"; // Blue
-      }
-      // Note: We don't need 'tag-satire' or 'tag-bad' anymore, as we removed the subjective checks.
-      // However, your CSS still has the legacy 'tag-bad' and 'tag-satire' classes.
-      // We should use the new CSS classes established earlier (tag-verified-authority, tag-reputable-quality, tag-unscored-default)
+            // 2. Create the Tag Element
+            const tag = document.createElement("span");
+            tag.className = `credible-tag ${tagClass}`;
+            
+            // FINAL FIX FOR MIRRORING (using BDI)
+            const bdiElement = document.createElement("bdi");
+            bdiElement.textContent = verdict.label;
+            tag.appendChild(bdiElement);
 
-      tag.className = `credible-tag ${tagClass}`;
+            // 3. Attach Click/Pop-up Listener (UX/Legal Compliance)
+            tag.addEventListener('click', () => {
+                // IMPORTANT: This uses the 'tag_reason' field which contains the styled HTML for the pop-up box.
+                // In a production extension, you would replace this 'alert' with a custom modal function.
+                
+                // For demonstration, we show the reason content:
+                alert(`Status: ${verdict.label}\n\n--- LEGAL JUSTIFICATION ---\n${verdict.tag_reason.replace(/<[^>]*>/g, '')}`);
+            });
 
-      const injectionPoint = linkElement.querySelector("h3");
 
-      if (injectionPoint) {
-        injectionPoint.after(tag);
-        injectedCount++;
-      }
-    }
-  });
-  console.log(
-    `[FRONTEND] Injected ${injectedCount} credibility tags into the search results.`
-  );
+            // 4. Inject into Page
+            const injectionPoint = linkElement.querySelector("h3");
+            if (injectionPoint) {
+                injectionPoint.after(tag);
+                injectedCount++;
+            }
+        }
+    });
+    console.log(
+        `[FRONTEND] Injected ${injectedCount} credibility tags into the search results.`
+    );
 }
