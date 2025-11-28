@@ -85,3 +85,61 @@
     border: 1px solid #b91c1c;
     color: #ffffff;
 }
+
+
+body {
+    /* Sets the overall size of the popup window */
+    width: 280px; 
+    padding: 15px;
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #ffffff;
+}
+
+h4 {
+    color: #1A365D;
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+p {
+    color: #4A5568;
+    margin-bottom: 5px;
+}
+
+#urlDisplay {
+    font-size: 11px;
+    color: #6B7280;
+    word-wrap: break-word; /* Allows long URLs to wrap */
+    border-bottom: 1px solid #E2E8F0;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+}
+
+/* The main action button style */
+#fullScanButton {
+    background-color: #3b82f6; /* Blue shade */
+    color: white;
+    border: none;
+    padding: 12px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    width: 100%;
+    font-weight: bold;
+    font-size: 14px;
+    transition: background-color 0.2s;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+#fullScanButton:hover {
+    background-color: #2563eb; /* Darker blue on hover */
+}
+
+/* Status Messages (e.g., "Scanning..." or "Error") */
+#status {
+    text-align: center;
+    font-weight: 600;
+    margin-top: 15px;
+    font-size: 13px;
+}
