@@ -1,0 +1,6 @@
+# Ignore development environments and secret files
+.venv
+venv/
+.env
+__pycache__/
+*.pyc
