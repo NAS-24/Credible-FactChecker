@@ -296,6 +296,6 @@ async def verify_full_article(data: ArticleIn):
 
 if __name__ == "__main__":
     # The default port for local testing is 8000. 
-    # For Render, we use os.environ.get('PORT') to listen on the required port.
     port = int(os.environ.get('PORT', 8000))
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+    # CRITICAL: Change reload=True to reload=False for production safety.
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)

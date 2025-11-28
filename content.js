@@ -2,7 +2,7 @@
 console.log("Credible Content Script Loaded!");
 
 // --- 1. CONFIGURATION ---
-const BACKEND_ENDPOINT = "http://localhost:8000/api/check-credibility";
+const BACKEND_ENDPOINT = "https://credible-factchecker.onrender.com/api/check-credibility";
 const CACHED_LINKS = new Map(); // Map to store link elements for quick injection
 
 // Function to extract the user's search query from the URL bar (e.g., from ?q=...)
