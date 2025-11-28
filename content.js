@@ -24,11 +24,20 @@ window.onload = function () {
   // 2a. Extract User Query FIRST
   const userQuery = getUserSearchQuery();
   console.log(`User Query Extracted: ${userQuery || "N/A"}`);
-
+   
   console.log("Page has loaded. Starting link extraction...");
 
   // 2b. Data Extraction: Find ALL result links on the page.
-  const linkElements = document.querySelectorAll("a:has(h3)");
+  // Web results
+const webLinks = document.querySelectorAll("a:has(h3)");
+
+// Google News results (do not use <h3>, they use <h4> or special classes)
+const newsLinks = document.querySelectorAll(
+    'a.WlydOe, a.JtKRv, a.VDXfz, a:has(h4)'
+);
+
+// Combine both web + news results
+const linkElements = [...webLinks, ...newsLinks];
   let searchResults = [];
 
   linkElements.forEach((link) => {
@@ -134,7 +143,9 @@ function injectVerdictsIntoPage(verdicts) {
 
 
             // 4. Inject into Page
-            const injectionPoint = linkElement.querySelector("h3");
+            const injectionPoint =
+                linkElement.querySelector("h3") || 
+                linkElement.querySelector("h4"); // for Google News;
             if (injectionPoint) {
                 injectionPoint.after(tag);
                 injectedCount++;
