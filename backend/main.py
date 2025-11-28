@@ -30,15 +30,6 @@ except ImportError:
         explanation: str = ""
         citation: str = ""
 
-# --- MVP IMPORTS ---
-if __name__ != "__main__":
-    from reputation_data import LOW_REPUTATION_DOMAINS 
-else:
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    sys.path.append(current_dir)
-    # NOTE: user must ensure this file path is correct 
-    from reputation_data import LOW_REPUTATION_DOMAINS 
-
 
 # --- 1. FastAPI App Initialization & Config ---
 app = FastAPI(title="Credible Hybrid Backend", version="4.0-Agentic-Core")
