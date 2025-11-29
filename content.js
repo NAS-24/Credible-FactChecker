@@ -111,55 +111,46 @@ function injectVerdictsIntoPage(verdicts) {
     verdicts.forEach((verdict) => {
         const linkElement = CACHED_LINKS.get(verdict.url);
 
-        // Check if a tag should be displayed (must have a valid link and a label, which is always true unless UNSCORED)
         if (linkElement && verdict.label) {
             
             // 1. Determine the CSS Class based on the FINAL 'label'
             let tagClass = "tag-unscored-default"; 
 
+            // CRITICAL FIX: Checking the FINAL label string for color assignment
             if (verdict.label === "VERIFIED") {
                 tagClass = "tag-verified-authority"; // Green
             } else if (verdict.label === "REPUTABLE") {
                 tagClass = "tag-reputable-quality"; // Blue
             } 
 
-            // 2. Create the Tag Element
+            // 2. Create the Tag Element (BDI fix remains)
             const tag = document.createElement("span");
             tag.className = `credible-tag ${tagClass}`;
             
-            // FINAL FIX FOR MIRRORING (using BDI)
             const bdiElement = document.createElement("bdi");
             bdiElement.textContent = verdict.label;
             tag.appendChild(bdiElement);
 
-            // 3. Attach Click/Pop-up Listener (UX/Legal Compliance)
-            tag.addEventListener('click', () => {
-                // IMPORTANT: This uses the 'tag_reason' field which contains the styled HTML for the pop-up box.
-                // In a production extension, you would replace this 'alert' with a custom modal function.
-                
-                // For demonstration, we show the reason content:
-                alert(`Status: ${verdict.label}\n\n--- LEGAL JUSTIFICATION ---\n${verdict.tag_reason.replace(/<[^>]*>/g, '')}`);
+            // 3. Attach Click/Pop-up Listener (Calls the showPopup function)
+            tag.addEventListener('click', (event) => {
+                event.stopPropagation(); 
+                // CRITICAL: Calls the showPopup function with the final HTML justification
+                showPopup(tag, verdict.tag_reason); 
             });
 
 
-            // 4. Inject into Page
-            const injectionPoint =
-                linkElement.querySelector("h3") || 
-                linkElement.querySelector("h4"); // for Google News;
-                linkElement; // <<< CRITICAL ADDITION: Use the main anchor link as a fallback injection point.
+            // 4. Inject into Page (The final, resilient injection logic)
+            const injectionPoint = linkElement.querySelector("h3") || linkElement.querySelector("h4");
             
             if (injectionPoint) {
-                // If it found a header, inject after the header. If it used the linkElement, inject after the link.
-                if (injectionPoint === linkElement) {
-                    // If we use the raw link element, inject *after* the element to prevent disrupting the link.
-                    linkElement.after(tag);
-                } else {
-                    // If we found the h3/h4, inject after the header (inside the link context).
-                    injectionPoint.after(tag);
-                }
-                    
-                injectedCount++;
+                // Inject after the header element
+                injectionPoint.after(tag);
+            } else {
+                // Fallback: Inject after the link element itself for complex news boxes
+                linkElement.after(tag);
             }
+            
+            injectedCount++;
         }
     });
     console.log(
