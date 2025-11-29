@@ -146,8 +146,18 @@ function injectVerdictsIntoPage(verdicts) {
             const injectionPoint =
                 linkElement.querySelector("h3") || 
                 linkElement.querySelector("h4"); // for Google News;
+                linkElement; // <<< CRITICAL ADDITION: Use the main anchor link as a fallback injection point.
+            
             if (injectionPoint) {
-                injectionPoint.after(tag);
+                // If it found a header, inject after the header. If it used the linkElement, inject after the link.
+                if (injectionPoint === linkElement) {
+                    // If we use the raw link element, inject *after* the element to prevent disrupting the link.
+                    linkElement.after(tag);
+                } else {
+                    // If we found the h3/h4, inject after the header (inside the link context).
+                    injectionPoint.after(tag);
+                }
+                    
                 injectedCount++;
             }
         }
