@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+  <div class="sidebar-container">
+    <header class="sidebar-header">
+      <h1>Credible</h1>
+      <button id="closeSidebar" class="close-btn">×</button>
+    </header>
+
+    <div class="content-area">
+      <!-- Navigation Tabs -->
+      <div class="tabs">
+        <button class="tab-button active" data-tab="textVerificationTab">Text Verification</button>
+        <button class="tab-button" data-tab="pageAnalysisTab">Page Analysis</button>
+      </div>
+
+      <!-- Text Verification Section -->
+      <div id="textVerificationTab" class="tab-content active">
+        <div class="section">
+          <h3>Text Verification</h3>
+          <div class="instructions">
+            <p><strong>Right-click any selected text and choose "Verify with Credible"</strong></p>
+            <p>Or paste text below to verify manually:</p>
+            <textarea id="manualTextInput" placeholder="Paste text here to verify manually..." rows="3"></textarea>
+            <button id="verifyManualText" class="verify-btn">Verify Text</button>
+          </div>
+          
+          <div class="loading" id="textLoading">Analyzing text claim...</div>
+          
+          <div id="textResults" class="results hidden">
+            <div class="result-item">
+              <label>Original Text:</label>
+              <span id="textClaim" class="value"></span>
+            </div>
+            <div class="result-item">
+              <label>Verification Status:</label>
+              <span id="textStatus" class="status"></span>
+            </div>
+            <div class="result-item">
+              <label>Explanation:</label>
+              <p id="textExplanation" class="explanation"></p>
+            </div>
+            
+            <!-- Citation Section - Raw API Output -->
+            <div class="result-item" id="citationSection">
+              <label>Citations:</label>
+              <pre id="textCitations" class="api-output"></pre>
+            </div>
+            
+            <div class="result-item" id="textTierInfo">
+              <label>Verification Tier:</label>
+              <span id="textTier" class="tier"></span>
+            </div>
+          </div>
+
+          <div id="textErrorMessage" class="error hidden">
+            <p>An error occurred while verifying the text. Please try again.</p>
+            <button id="textRetryButton" class="retry-btn">Retry</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Full Page Analysis Section -->
+      <div id="pageAnalysisTab" class="tab-content">
+        <div class="section">
+          <h3>Full Page Analysis</h3>
+          <div class="instructions">
+            <p><strong>Analyze the credibility of the entire webpage</strong></p>
+            <p>Get comprehensive analysis of all claims on this page.</p>
+            <button id="analyzePage" class="verify-btn">Analyze This Page</button>
+          </div>
+          
+          <div class="loading" id="pageLoading">Analyzing page content...</div>
+          
+          <div id="pageResults" class="results hidden">
+            <div class="result-grid">
+              <div class="grid-item">
+                <label>Total Claims Analyzed:</label>
+                <span id="pageClaimsCount" class="value large"></span>
+              </div>
+              <div class="grid-item">
+                <label>Overall Verdict:</label>
+                <span id="pageVerdict" class="status large"></span>
+              </div>
+            </div>
+            
+            <div class="result-item">
+              <label>Claims Breakdown:</label>
+              <div id="claimsBreakdown" class="breakdown"></div>
+            </div>
+            
+            <div class="result-item">
+              <label>Page Analysis:</label>
+              <p id="pageAnalysis" class="explanation"></p>
+            </div>
+            
+            <div class="result-item">
+              <label>Individual Claims:</label>
+              <div id="individualClaims" class="claims-list"></div>
+            </div>
+          </div>
+
+          <div id="pageErrorMessage" class="error hidden">
+            <p>An error occurred while analyzing the page. Please try again.</p>
+            <button id="pageRetryButton" class="retry-btn">Retry Analysis</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="sidebar.js"></script>
+</body>
+</html>

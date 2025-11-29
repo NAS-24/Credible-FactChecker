@@ -1,53 +1,83 @@
-
-// 1. Create the Context Menu Item on Installation
+// Create context menu item
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
-    id: "verify-claim",
-    title: "Verify Statement with Credible",
-    contexts: ["selection"] // Only show when text is selected
+    id: "verifyWithCredible",
+    title: "Verify with Credible",
+    contexts: ["selection"]
   });
 });
 
-// 2. Listen for Clicks
+// Handle context menu clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "verify-claim" && info.selectionText) {
-    
-    const claimText = info.selectionText;
-    console.log("[BACKGROUND] User selected text for verification:", claimText);
-
-    // 3. Send the Claim to the Python Backend
-    verifyClaimWithBackend(claimText);
+  if (info.menuItemId === "verifyWithCredible") {
+    verifySelectedText(tab.id, info.selectionText);
   }
 });
 
-// 3. Verification Logic
-async function verifyClaimWithBackend(claim) {
-  const ENDPOINT = "https://credible-factchecker.onrender.com/api/check-agentic-claim"; 
+// Handle extension icon click
+chrome.action.onClicked.addListener((tab) => {
+  toggleSidebar(tab.id);
+});
 
-  try {
-    console.log(`[BACKGROUND] Sending claim to ${ENDPOINT}...`);
-    
-    const response = await fetch(ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ claim: claim }) // Matches the ClaimIn Pydantic model
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-
-    const result = await response.json();
-    
-    // For now, log the result to the console (visible in the Extension's background console)
-    console.log("-----------------------------------------");
-    console.log("[BACKGROUND] VERIFICATION COMPLETE");
-    console.log("VERDICT:", result.claim_verdict);
-    console.log("EXPLANATION:", result.explanation);
-    console.log("CITATION:", result.citation);
-    console.log("-----------------------------------------");
-
-  } catch (error) {
-    console.error("[BACKGROUND] Error verifying claim:", error);
+// Handle messages from popup
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "openSidebar") {
+    toggleSidebar(request.tabId);
+  } else if (request.action === "analyzePage") {
+    analyzePage(request.tabId);
   }
+  sendResponse({ success: true });
+});
+
+// Helper functions
+function verifySelectedText(tabId, selectedText) {
+  chrome.tabs.sendMessage(tabId, {
+    action: "verifySelectedText",
+    selectedText: selectedText
+  }).catch(error => {
+    console.log('Content script not loaded, injecting...');
+    injectContentScript(tabId, () => {
+      chrome.tabs.sendMessage(tabId, {
+        action: "verifySelectedText",
+        selectedText: selectedText
+      });
+    });
+  });
+}
+
+function toggleSidebar(tabId) {
+  chrome.tabs.sendMessage(tabId, {
+    action: "toggleSidebar"
+  }).catch(error => {
+    console.log('Content script not loaded, injecting...');
+    injectContentScript(tabId, () => {
+      chrome.tabs.sendMessage(tabId, {
+        action: "toggleSidebar"
+      });
+    });
+  });
+}
+
+function analyzePage(tabId) {
+  chrome.tabs.sendMessage(tabId, {
+    action: "analyzePage"
+  }).catch(error => {
+    console.log('Content script not loaded, injecting...');
+    injectContentScript(tabId, () => {
+      chrome.tabs.sendMessage(tabId, {
+        action: "analyzePage"
+      });
+    });
+  });
+}
+
+function injectContentScript(tabId, callback) {
+  chrome.scripting.executeScript({
+    target: { tabId: tabId },
+    files: ['content.js']
+  }).then(() => {
+    setTimeout(callback, 100);
+  }).catch(error => {
+    console.error('Failed to inject content script:', error);
+  });
 }
