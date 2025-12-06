@@ -64,8 +64,11 @@ function mainExecution() {
     }
 }
 
-// *** CRITICAL FIX APPLIED HERE: Listen for DOMContentLoaded instead of load. ***
-document.addEventListener('DOMContentLoaded', mainExecution);
+// *** CRITICAL FIX APPLIED HERE: Listen for DOMContentLoaded with a delay. ***
+document.addEventListener('DOMContentLoaded', function() {
+    // Use a short delay to ensure the search page is fully settled before modifying the DOM.
+    setTimeout(mainExecution, 500); 
+});
 
 
 // --- 3. Communication Function (Unchanged) ---
@@ -91,6 +94,8 @@ async function sendDataToBackend(data, userQuery) {
         console.log("-----------------------------------------");
         console.log(`[FRONTEND] SUCCESS! Received ${verdicts.length} verdicts.`);
         console.log("FULL VERDICTS ARRAY:", verdicts);
+        
+        // Phase 3: Display the Tags (Now via Title attribute)
         injectVerdictsIntoPage(verdicts);
     } catch (error) {
         console.error(
@@ -100,46 +105,33 @@ async function sendDataToBackend(data, userQuery) {
     }
 }
 
-// --- 4. RENDERING LOGIC (MODIFIED for PREPEND) ---
+// --- 4. RENDERING LOGIC (MODIFIED FOR TITLE ATTRIBUTE INJECTION - NO NEW ELEMENTS) ---
 function injectVerdictsIntoPage(verdicts) {
     let injectedCount = 0;
 
     verdicts.forEach((verdict) => {
         const linkElement = CACHED_LINKS.get(verdict.url);
-
+        
+        // Only proceed if we have a link element and a label
         if (linkElement && verdict.label) {
-            let tagClass = "tag-unscored-default"; 
-            if (verdict.label === "VERIFIED") {
-                tagClass = "tag-verified-authority"; 
-            } else if (verdict.label === "REPUTABLE") {
-                tagClass = "tag-reputable-quality"; 
-            } 
-
-            const tag = document.createElement("span");
-            tag.className = `credible-tag ${tagClass}`;
-            const bdiElement = document.createElement("bdi");
-            bdiElement.textContent = verdict.label;
-            tag.appendChild(bdiElement);
-
-            tag.addEventListener('click', () => {
-                alert(`Status: ${verdict.label}\n\n--- LEGAL JUSTIFICATION ---\n${verdict.tag_reason.replace(/<[^>]*>/g, '')}`);
-            });
-
-            // 4. Inject into Page: Target the H3 or H4 element.
-            const headerElement =
-                linkElement.querySelector("h3") || 
-                linkElement.querySelector("h4"); 
             
-            if (headerElement) {
-                // *** CRITICAL CHANGE: Use prepend() to insert the tag INSIDE 
-                //     the header element, BEFORE the title text. ***
-                headerElement.prepend(tag);
-                
-                injectedCount++;
+            // Format the verdict into a clean string for the title attribute
+            const titleVerdict = 
+                `[CREDIBILITY STATUS: ${verdict.label}] - Click for justification.`;
+            
+            // If the element already has a title, append the verdict.
+            const existingTitle = linkElement.getAttribute('title');
+            
+            if (existingTitle) {
+                linkElement.setAttribute('title', `${existingTitle} ${titleVerdict}`);
+            } else {
+                linkElement.setAttribute('title', titleVerdict);
             }
+            
+            injectedCount++;
         }
     });
     console.log(
-        `[FRONTEND] Injected ${injectedCount} credibility tags into the search results.`
+        `[FRONTEND] Injected ${injectedCount} credibility hints into link titles.`
     );
 }
