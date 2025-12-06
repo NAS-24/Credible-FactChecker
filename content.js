@@ -165,4 +165,4 @@ function injectVerdictsIntoPage(verdicts) {
     console.log(
         `[FRONTEND] Injected ${injectedCount} credibility tags into the search results.`
     );
-}
+} 
