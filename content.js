@@ -7,101 +7,105 @@ const CACHED_LINKS = new Map(); // Map to store link elements for quick injectio
 
 // Function to extract the user's search query from the URL bar (e.g., from ?q=...)
 function getUserSearchQuery() {
-  try {
-    const urlParams = new URLSearchParams(window.location.search);
-    // Google uses 'q' parameter for the query
-    const query = urlParams.get("q");
-    // Decode the URL characters (like changing '+' to ' ' or '%20')
-    return query ? decodeURIComponent(query.replace(/\+/g, " ")) : null;
-  } catch (e) {
-    console.error("Could not extract search query from URL:", e);
-    return null;
-  }
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        // Google uses 'q' parameter for the query
+        const query = urlParams.get("q");
+        // Decode the URL characters (like changing '+' to ' ' or '%20')
+        return query ? decodeURIComponent(query.replace(/\+/g, " ")) : null;
+    } catch (e) {
+        console.error("Could not extract search query from URL:", e);
+        return null;
+    }
 }
 
-// --- 2. Main Execution Function ---
-window.onload = function () {
-  // 2a. Extract User Query FIRST
-  const userQuery = getUserSearchQuery();
-  console.log(`User Query Extracted: ${userQuery || "N/A"}`);
-   
-  console.log("Page has loaded. Starting link extraction...");
+// --- 2. Main Execution Function (Now wrapped for listener) ---
+function mainExecution() {
+    // 2a. Extract User Query FIRST
+    const userQuery = getUserSearchQuery();
+    console.log(`User Query Extracted: ${userQuery || "N/A"}`);
+    
+    console.log("Page has loaded. Starting link extraction...");
 
-  // 2b. Data Extraction: Find ALL result links on the page.
-  // Web results
-const webLinks = document.querySelectorAll("a:has(h3)");
+    // 2b. Data Extraction: Find ALL result links on the page.
+    // Web results
+    const webLinks = document.querySelectorAll("a:has(h3)");
 
-// Google News results (do not use <h3>, they use <h4> or special classes)
-const newsLinks = document.querySelectorAll(
-    'a.WlydOe, a.JtKRv, a.VDXfz, a:has(h4)'
-);
+    // Google News results (do not use <h3>, they use <h4> or special classes)
+    const newsLinks = document.querySelectorAll(
+        'a.WlydOe, a.JtKRv, a.VDXfz, a:has(h4)'
+    );
 
-// Combine both web + news results
-const linkElements = [...webLinks, ...newsLinks];
-  let searchResults = [];
+    // Combine both web + news results
+    const linkElements = [...webLinks, ...newsLinks];
+    let searchResults = [];
 
-  linkElements.forEach((link) => {
-    const url = link.href;
-    if (url && url.startsWith("http")) {
-      try {
-        const domain = new URL(url).hostname;
-        const uniqueKey = url;
+    linkElements.forEach((link) => {
+        const url = link.href;
+        if (url && url.startsWith("http")) {
+            try {
+                const domain = new URL(url).hostname;
+                const uniqueKey = url;
 
-        searchResults.push({ url: url, domain: domain });
-        // Cache the element using its URL as the unique key
-        CACHED_LINKS.set(uniqueKey, link);
-      } catch (e) {
-        // Ignore invalid URLs
-      }
+                searchResults.push({ url: url, domain: domain });
+                // Cache the element using its URL as the unique key
+                CACHED_LINKS.set(uniqueKey, link);
+            } catch (e) {
+                // Ignore invalid URLs
+            }
+        }
+    });
+
+    console.log(`Found ${searchResults.length} potential search results.`);
+
+    if (searchResults.length > 0) {
+        // 2c. Send data to the Python Backend
+        sendDataToBackend(searchResults, userQuery);
     }
-  });
+}
 
-  console.log(`Found ${searchResults.length} potential search results.`);
+// *** CRITICAL FIX APPLIED HERE: Listen for the 'load' event instead of overwriting it. ***
+window.addEventListener('load', mainExecution);
 
-  if (searchResults.length > 0) {
-    // 2c. Send data to the Python Backend
-    sendDataToBackend(searchResults, userQuery);
-  }
-};
 
 // --- 3. Communication Function ---
 // Now sends a combined payload (links + single query)
 async function sendDataToBackend(data, userQuery) {
-  try {
-    console.log(
-      `[FRONTEND] Sending ${data.length} items to backend at ${BACKEND_ENDPOINT}...`
-    );
+    try {
+        console.log(
+            `[FRONTEND] Sending ${data.length} items to backend at ${BACKEND_ENDPOINT}...`
+        );
 
-    // Build the combined payload that matches the FastAPI Pydantic model
-    const payload = {
-      links: data,
-      query: userQuery,
-    };
+        // Build the combined payload that matches the FastAPI Pydantic model
+        const payload = {
+            links: data,
+            query: userQuery,
+        };
 
-    const response = await fetch(BACKEND_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload), // Send the combined object
-    });
+        const response = await fetch(BACKEND_ENDPOINT, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload), // Send the combined object
+        });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const verdicts = await response.json();
+
+        console.log("-----------------------------------------");
+        console.log(`[FRONTEND] SUCCESS! Received ${verdicts.length} verdicts.`);
+        console.log("FULL VERDICTS ARRAY:", verdicts);
+
+        // Phase 3: Display the Tags
+        injectVerdictsIntoPage(verdicts);
+    } catch (error) {
+        console.error(
+            "[FRONTEND] Error communicating with backend. Is the FastAPI server running?",
+            error
+        );
     }
-
-    const verdicts = await response.json();
-
-    console.log("-----------------------------------------");
-    console.log(`[FRONTEND] SUCCESS! Received ${verdicts.length} verdicts.`);
-    console.log("FULL VERDICTS ARRAY:", verdicts);
-
-    // Phase 3: Display the Tags
-    injectVerdictsIntoPage(verdicts);
-  } catch (error) {
-    console.error(
-      "[FRONTEND] Error communicating with backend. Is the FastAPI server running?",
-      error
-    );
-  }
 }
 
 // --- 4. RENDERING LOGIC (FINAL PRODUCTION VERSION) ---
@@ -146,18 +150,11 @@ function injectVerdictsIntoPage(verdicts) {
             const injectionPoint =
                 linkElement.querySelector("h3") || 
                 linkElement.querySelector("h4"); // for Google News;
-                linkElement; // <<< CRITICAL ADDITION: Use the main anchor link as a fallback injection point.
+                // linkElement; // <<< Original fallback removed for cleaner DOM manipulation
             
             if (injectionPoint) {
-                // If it found a header, inject after the header. If it used the linkElement, inject after the link.
-                if (injectionPoint === linkElement) {
-                    // If we use the raw link element, inject *after* the element to prevent disrupting the link.
-                    linkElement.after(tag);
-                } else {
-                    // If we found the h3/h4, inject after the header (inside the link context).
-                    injectionPoint.after(tag);
-                }
-                    
+                // Inject AFTER the h3 or h4 element.
+                injectionPoint.after(tag);
                 injectedCount++;
             }
         }
@@ -165,4 +162,4 @@ function injectVerdictsIntoPage(verdicts) {
     console.log(
         `[FRONTEND] Injected ${injectedCount} credibility tags into the search results.`
     );
-} 
+}
