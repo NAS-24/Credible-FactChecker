@@ -19,13 +19,13 @@ function getUserSearchQuery() {
     }
 }
 
-// --- 2. Main Execution Function (Now wrapped for listener) ---
+// --- 2. Main Execution Function ---
 function mainExecution() {
     // 2a. Extract User Query FIRST
     const userQuery = getUserSearchQuery();
     console.log(`User Query Extracted: ${userQuery || "N/A"}`);
     
-    console.log("Page has loaded. Starting link extraction...");
+    console.log("DOM Content Loaded. Starting link extraction...");
 
     // 2b. Data Extraction: Find ALL result links on the page.
     // Web results
@@ -64,41 +64,33 @@ function mainExecution() {
     }
 }
 
-// *** CRITICAL FIX APPLIED HERE: Listen for the 'load' event instead of overwriting it. ***
-window.addEventListener('load', mainExecution);
+// *** CRITICAL FIX APPLIED HERE: Listen for DOMContentLoaded instead of load. ***
+document.addEventListener('DOMContentLoaded', mainExecution);
 
 
-// --- 3. Communication Function ---
-// Now sends a combined payload (links + single query)
+// --- 3. Communication Function (Unchanged) ---
 async function sendDataToBackend(data, userQuery) {
     try {
         console.log(
             `[FRONTEND] Sending ${data.length} items to backend at ${BACKEND_ENDPOINT}...`
         );
-
-        // Build the combined payload that matches the FastAPI Pydantic model
         const payload = {
             links: data,
             query: userQuery,
         };
-
         const response = await fetch(BACKEND_ENDPOINT, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload), // Send the combined object
+            body: JSON.stringify(payload),
         });
 
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
-
         const verdicts = await response.json();
-
         console.log("-----------------------------------------");
         console.log(`[FRONTEND] SUCCESS! Received ${verdicts.length} verdicts.`);
         console.log("FULL VERDICTS ARRAY:", verdicts);
-
-        // Phase 3: Display the Tags
         injectVerdictsIntoPage(verdicts);
     } catch (error) {
         console.error(
@@ -108,53 +100,41 @@ async function sendDataToBackend(data, userQuery) {
     }
 }
 
-// --- 4. RENDERING LOGIC (FINAL PRODUCTION VERSION) ---
+// --- 4. RENDERING LOGIC (MODIFIED for PREPEND) ---
 function injectVerdictsIntoPage(verdicts) {
     let injectedCount = 0;
 
     verdicts.forEach((verdict) => {
         const linkElement = CACHED_LINKS.get(verdict.url);
 
-        // Check if a tag should be displayed (must have a valid link and a label, which is always true unless UNSCORED)
         if (linkElement && verdict.label) {
-            
-            // 1. Determine the CSS Class based on the FINAL 'label'
             let tagClass = "tag-unscored-default"; 
-
             if (verdict.label === "VERIFIED") {
-                tagClass = "tag-verified-authority"; // Green
+                tagClass = "tag-verified-authority"; 
             } else if (verdict.label === "REPUTABLE") {
-                tagClass = "tag-reputable-quality"; // Blue
+                tagClass = "tag-reputable-quality"; 
             } 
 
-            // 2. Create the Tag Element
             const tag = document.createElement("span");
             tag.className = `credible-tag ${tagClass}`;
-            
-            // FINAL FIX FOR MIRRORING (using BDI)
             const bdiElement = document.createElement("bdi");
             bdiElement.textContent = verdict.label;
             tag.appendChild(bdiElement);
 
-            // 3. Attach Click/Pop-up Listener (UX/Legal Compliance)
             tag.addEventListener('click', () => {
-                // IMPORTANT: This uses the 'tag_reason' field which contains the styled HTML for the pop-up box.
-                // In a production extension, you would replace this 'alert' with a custom modal function.
-                
-                // For demonstration, we show the reason content:
                 alert(`Status: ${verdict.label}\n\n--- LEGAL JUSTIFICATION ---\n${verdict.tag_reason.replace(/<[^>]*>/g, '')}`);
             });
 
-
-            // 4. Inject into Page
-            const injectionPoint =
+            // 4. Inject into Page: Target the H3 or H4 element.
+            const headerElement =
                 linkElement.querySelector("h3") || 
-                linkElement.querySelector("h4"); // for Google News;
-                // linkElement; // <<< Original fallback removed for cleaner DOM manipulation
+                linkElement.querySelector("h4"); 
             
-            if (injectionPoint) {
-                // Inject AFTER the h3 or h4 element.
-                injectionPoint.after(tag);
+            if (headerElement) {
+                // *** CRITICAL CHANGE: Use prepend() to insert the tag INSIDE 
+                //     the header element, BEFORE the title text. ***
+                headerElement.prepend(tag);
+                
                 injectedCount++;
             }
         }
