@@ -3,54 +3,51 @@
 /* ---------------------------------------------------- */
 
 .credible-tag {
-  /* AGGRESSIVE FIXES (Mirroring & Rotation) */
-  direction: ltr !important;
-  unicode-bidi: plaintext !important;
-  text-align: left !important;
+    /* AGGRESSIVE FIXES (Mirroring & Rotation) */
+    direction: ltr !important;
+    unicode-bidi: plaintext !important;
+    text-align: left !important;
 
-  /* ❌ REMOVED: transform: rotateX(180deg) !important;
-     This property was breaking the search results page layout.
-     The directional fixes above are sufficient for text mirroring. */
+    /* Box Model & Positioning */
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    margin-left: 12px;
+    border-radius: 6px;
+    position: static; /* Safe, static positioning */
 
-  /* Box Model & Positioning */
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px; /* Enhanced padding for a better badge look */
-  margin-left: 12px;
-  border-radius: 6px;
+    /* Typography */
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 12px !important;
+    font-weight: 800;
+    color: #ffffff;
+    text-transform: uppercase;
+    line-height: 1.2;
+    white-space: nowrap;
+    letter-spacing: 0.5px;
 
-  /* Typography */
-  font-family: Arial, Helvetica, sans-serif !important;
-  font-size: 12px !important;
-  font-weight: 800;
-  color: #ffffff;
-  text-transform: uppercase;
-  line-height: 1.2;
-  white-space: nowrap;
-  letter-spacing: 0.5px;
+    /* Aesthetics & Interactivity */
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
 
-  /* Aesthetics & Interactivity */
-  cursor: pointer;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3); /* Darker shadow for better pop */
+    /* Transition for smooth hover effects */
+    transition: opacity 0.2s, transform 0.2s;
 
-  /* Update transition property: Removed 'transform' as it is no longer used */
-  transition: opacity 0.2s; 
-
-  /* Z-Index ensures the tag is always visible */
-  z-index: 9999;
-  gap: 5px; /* Spacing for icon and text */
+    /* Z-Index ensures the tag is always visible */
+    z-index: 9999;
+    gap: 5px;
 }
 
 /* FIX: Target ALL inner elements inside the tag (The text inside the <bdi> tag) */
 .credible-tag * {
-  direction: ltr !important;
-  unicode-bidi: unset !important;
+    direction: ltr !important;
+    unicode-bidi: unset !important;
 }
 
 .credible-tag:hover {
-  /* MODIFIED: Removed the transform, applying a simple lift effect (optional) */
-  transform: translateY(-1px); 
-  opacity: 0.95;
+    /* Safe lift effect - no aggressive rotation */
+    transform: translateY(-2px);
+    opacity: 0.95;
 }
 
 /* ---------------------------------------------------- */
@@ -59,95 +56,95 @@
 
 /* VERIFIED (IFCN Certified): Green - Highest Authority Confirmation */
 .tag-verified-authority {
-  background-color: #10b981; /* Prominent Green */
-  border: 1px solid #068c62;
-  color: #ffffff;
+    background-color: #10b981;
+    border: 1px solid #068c62;
+    color: #ffffff;
 }
 
 /* REPUTABLE (High Editorial Standard): Blue - Trust and Quality */
 .tag-reputable-quality {
-  background-color: #3b82f6; /* Prominent Blue */
-  border: 1px solid #2563eb;
-  color: #ffffff;
+    background-color: #3b82f6;
+    border: 1px solid #2563eb;
+    color: #ffffff;
 }
 
 /* UNSCORED (Publisher Not Vetted): Gray - Neutral Default */
 .tag-unscored-default {
-  background-color: #f3f4f6; /* Lightest Grey shade */
-  border: 1px solid #d1d5db;
-  color: #4b5563; /* Dark text for readability */
-  box-shadow: none;
+    background-color: #f3f4f6;
+    border: 1px solid #d1d5db;
+    color: #4b5563;
+    box-shadow: none;
 }
 
 /* Red/Bad: For extreme cases (we keep this for technical/malicious warnings if ever implemented) */
 .tag-malice-warning {
-  background-color: #ef4444;
-  border: 1px solid #b91c1c;
-  color: #ffffff;
+    background-color: #ef4444;
+    border: 1px solid #b91c1c;
+    color: #ffffff;
 }
 
 /* --- POPUP/NON-CONTENT-SCRIPT STYLES (Likely for the extension's popup.html) --- */
 
 body {
-  /* Sets the overall size of the popup window */
-  width: 280px;
-  padding: 15px;
-  margin: 0;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #ffffff;
+    /* Sets the overall size of the popup window */
+    width: 280px;
+    padding: 15px;
+    margin: 0;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #ffffff;
 }
 
 h4 {
-  color: #1a365d;
-  margin-top: 0;
-  margin-bottom: 10px;
-  font-size: 16px;
+    color: #1a365d;
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 16px;
 }
 
 p {
-  color: #4a5568;
-  margin-bottom: 5px;
+    color: #4a5568;
+    margin-bottom: 5px;
 }
 
 #urlDisplay {
-  font-size: 11px;
-  color: #6b7280;
-  word-wrap: break-word; /* Allows long URLs to wrap */
-  border-bottom: 1px solid #e2e8f0;
-  padding-bottom: 8px;
-  margin-bottom: 12px;
+    font-size: 11px;
+    color: #6b7280;
+    word-wrap: break-word;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
 }
 
 /* The main action button style */
 #fullScanButton {
-  background-color: #3b82f6; /* Blue shade */
-  color: white;
-  border: none;
-  padding: 12px 15px;
-  border-radius: 8px;
-  cursor: pointer;
-  width: 100%;
-  font-weight: bold;
-  font-size: 14px;
-  transition: background-color 0.2s;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    padding: 12px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    width: 100%;
+    font-weight: bold;
+    font-size: 14px;
+    transition: background-color 0.2s;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 #fullScanButton:hover {
-  background-color: #2563eb; /* Darker blue on hover */
+    background-color: #2563eb;
 }
 
 /* Status Messages (e.g., "Scanning..." or "Error") */
 #status {
-  text-align: center;
-  font-weight: 600;
-  margin-top: 15px;
-  font-size: 13px;
+    text-align: center;
+    font-weight: 600;
+    margin-top: 15px;
+    font-size: 13px;
 }
 
 .credible-popup {
-  /* Positioning & Box Model */
-  position: absolute;
-  z-index: 2147483647 !important; /* <<< CRITICAL FIX: Ensure it's on top of ALL browser elements */
-  /* ... rest of styles remain the same ... */
+    /* Positioning & Box Model */
+    position: absolute;
+    z-index: 2147483647 !important;
+    /* This positioning is fine for a pop-up, but ensure it's not being injected into the content script */
 }
