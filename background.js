@@ -10,7 +10,7 @@ chrome.runtime.onInstalled.addListener(() => {
 
 // 2. Listen for Clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "verify-claim" && info.selectionText) {
+  if (info.menuItemId === "verify-claim" && info.selectionText) { 
     
     const claimText = info.selectionText;
     console.log("[BACKGROUND] User selected text for verification:", claimText);
