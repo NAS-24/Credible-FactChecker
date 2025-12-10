@@ -29,7 +29,6 @@
   },
 
   "action": {
-    "default_popup": "popup.html",
     "default_icon": "icons/icon48.png",
     "default_title": "Credible: Full Scan"
   },
@@ -37,6 +36,8 @@
   "host_permissions": [
     "https://www.google.com/*",
     "https://*.google.com/*",
-    "https://credible-factchecker.onrender.com/*"
+    "https://credible-factchecker.onrender.com/*",
+    "http://*/*",
+    "https://*/*"
   ]
 }

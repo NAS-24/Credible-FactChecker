@@ -1,4 +1,4 @@
-// content.js - FINAL PRODUCTION VERSION
+// content.js - FINAL PRODUCTION VERSION (Resilient Flow)
 console.log("Credible Content Script Loaded!");
 
 // --- POPUP DISPLAY LOGIC (The Modal Function) ---
@@ -54,6 +54,7 @@ function mainExecution() {
     const userQuery = getUserSearchQuery();
     console.log(`User Query Extracted: ${userQuery || "N/A"}`);
     
+    // Data Extraction: Find ALL result links on the page.
     const webLinks = document.querySelectorAll("a:has(h3)");
     const newsLinks = document.querySelectorAll(
         'a.WlydOe, a.JtKRv, a.VDXfz, a:has(h4)'
@@ -83,16 +84,8 @@ function mainExecution() {
     }
 }
 
-// *** CRITICAL FIX APPLIED: Listen for DOMContentLoaded with a short delay ***
-document.addEventListener('DOMContentLoaded', function() {
-    // Delay ensures Google's dynamic content has loaded
-    setTimeout(mainExecution, 500); 
-});
-
-
 // --- 3. Communication Function (Unchanged) ---
 async function sendDataToBackend(data, userQuery) {
-    // ... (Your sendDataToBackend logic is unchanged and correct) ...
     try {
         console.log(
             `[FRONTEND] Sending ${data.length} items to backend at ${BACKEND_ENDPOINT}...`
@@ -180,7 +173,12 @@ function injectVerdictsIntoPage(verdicts) {
     );
 }
 
+// ====================================================================
+// --- FINAL EXECUTION TRIGGER (CORRECT PLACEMENT) ---
+// ====================================================================
+
+// *** CRITICAL FIX APPLIED: Listen for DOMContentLoaded with an extended delay ***
 document.addEventListener('DOMContentLoaded', function() {
-    // Delay ensures Google's dynamic content has loaded
-    setTimeout(mainExecution, 500); 
+    // Delay is now 1000ms for maximum stability against dynamic page loading
+    setTimeout(mainExecution, 1000); 
 });
