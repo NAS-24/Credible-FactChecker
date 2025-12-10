@@ -179,3 +179,8 @@ function injectVerdictsIntoPage(verdicts) {
         `[FRONTEND] Injected ${injectedCount} credibility tags into the search results.`
     );
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Delay ensures Google's dynamic content has loaded
+    setTimeout(mainExecution, 500); 
+});

@@ -14,7 +14,7 @@
     padding: 4px 10px;
     margin-left: 12px;
     border-radius: 6px;
-    position: static; /* Safe, static positioning */
+    position: static !important; /* CRITICAL: Safe, static positioning to prevent layout breakage */
 
     /* Typography */
     font-family: Arial, Helvetica, sans-serif !important;
@@ -45,7 +45,7 @@
 }
 
 .credible-tag:hover {
-    /* Safe lift effect - no aggressive rotation */
+    /* Safe lift effect */
     transform: translateY(-2px);
     opacity: 0.95;
 }
@@ -76,14 +76,39 @@
     box-shadow: none;
 }
 
-/* Red/Bad: For extreme cases (we keep this for technical/malicious warnings if ever implemented) */
+/* Red/Bad: For extreme cases */
 .tag-malice-warning {
     background-color: #ef4444;
     border: 1px solid #b91c1c;
     color: #ffffff;
 }
 
-/* --- POPUP/NON-CONTENT-SCRIPT STYLES (Likely for the extension's popup.html) --- */
+/* ---------------------------------------------------- */
+/* CREDIBLE POPUP (The styled modal box injected by content.js) */
+/* ---------------------------------------------------- */
+
+.credible-popup {
+    /* Positioning & Z-Index (CRITICAL for visibility over search results) */
+    position: absolute;
+    z-index: 2147483647 !important;
+
+    /* Box Model for Visibility (Ensures the box has structure and color) */
+    width: 380px; 
+    max-width: 90vw; 
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 15px; 
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    
+    /* Typography */
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+}
+
+/* ---------------------------------------------------- */
+/* EXTENSION ACTION POPUP STYLES (Used for the optional action/popup.html file) */
+/* ---------------------------------------------------- */
 
 body {
     /* Sets the overall size of the popup window */
@@ -140,23 +165,4 @@ p {
     font-weight: 600;
     margin-top: 15px;
     font-size: 13px;
-}
-
-.credible-popup {
-    /* Positioning & Z-Index (Already correct) */
-    position: absolute;
-    z-index: 2147483647 !important;
-
-    /* CRITICAL FIX: Add Box Model for visibility */
-    width: 380px; /* Define a clean, readable width */
-    max-width: 90vw; /* Ensure it fits on smaller screens */
-    background-color: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 15px; 
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); /* Clear separation from page */
-    
-    /* Ensure text renders correctly */
-    font-family: Arial, sans-serif;
-    font-size: 14px;
 }
