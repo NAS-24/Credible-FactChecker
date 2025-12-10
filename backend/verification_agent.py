@@ -59,7 +59,7 @@ class VerificationAgent:
             
             # 2. Client Initialization
             self.client = genai.Client(api_key=api_key)
-            self.model = 'gemini-2.5-pro' # A reasoning model for synthesis   #5RPM/100RPD
+            self.model = 'gemini-2.0-flash' # A reasoning model for synthesis   #5RPM/100RPD
             self.priority_domains = INDIA_AUTHORITY_DOMAINS
 
             # 3. Define the Agent's Core Role (System Instruction)
