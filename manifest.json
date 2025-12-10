@@ -17,8 +17,8 @@
         "*://*.bing.com/search?*",
         "*://*.duckduckgo.com/?*"
       ],
-      "js": ["content.js"]
-      
+      "js": ["content.js"],
+      "css": ["styles.css"]
     }
   ],
 

@@ -143,8 +143,20 @@ p {
 }
 
 .credible-popup {
-    /* Positioning & Box Model */
+    /* Positioning & Z-Index (Already correct) */
     position: absolute;
     z-index: 2147483647 !important;
-    /* This positioning is fine for a pop-up, but ensure it's not being injected into the content script */
+
+    /* CRITICAL FIX: Add Box Model for visibility */
+    width: 380px; /* Define a clean, readable width */
+    max-width: 90vw; /* Ensure it fits on smaller screens */
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 15px; 
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); /* Clear separation from page */
+    
+    /* Ensure text renders correctly */
+    font-family: Arial, sans-serif;
+    font-size: 14px;
 }
