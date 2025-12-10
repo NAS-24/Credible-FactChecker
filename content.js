@@ -173,12 +173,3 @@ function injectVerdictsIntoPage(verdicts) {
     );
 }
 
-// ====================================================================
-// --- FINAL EXECUTION TRIGGER (CORRECT PLACEMENT) ---
-// ====================================================================
-
-// *** CRITICAL FIX APPLIED: Listen for DOMContentLoaded with an extended delay ***
-document.addEventListener('DOMContentLoaded', function() {
-    // Delay is now 1000ms for maximum stability against dynamic page loading
-    setTimeout(mainExecution, 1000); 
-});
