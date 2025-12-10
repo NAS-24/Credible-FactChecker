@@ -52,44 +52,39 @@ function getUserSearchQuery() {
 
 // --- 2. Main Execution Function ---
 function mainExecution() {
-  const userQuery = getUserSearchQuery();
-  console.log(`User Query Extracted: ${userQuery || "N/A"}`);
+    const userQuery = getUserSearchQuery();
+    console.log(`User Query Extracted: ${userQuery || "N/A"}`);
+    
+    // FINAL RESILIENT SEARCH: Target common Google anchor tags that hold search titles
+    // This looks for links that are children of divs, which is common for main results.
+    const linkElements = document.querySelectorAll(
+        'div a[jsname]:not([role="button"]):not(.q.qs):not([class*="gb_"])'
+    );
+    // Note: The above selector intentionally excludes buttons and header/menu links.
 
-  // Find ALL result containers (the common parent div for Google search results)
-  const resultContainers = document.querySelectorAll(
-    'div.g, div[data-snf="1"], div.xpd, div.kp-blk, div.g.card'
-  );
+    let searchResults = [];
 
-  let linkElements = [];
-  resultContainers.forEach((container) => {
-    // Look inside the container for the primary anchor tag
-    const primaryLink = container.querySelector("a:not(.fl)");
-    if (primaryLink) {
-      linkElements.push(primaryLink);
+    linkElements.forEach((link) => {
+        const url = link.href;
+        // Proceed only if it's a valid external HTTP/HTTPS link
+        if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
+            try {
+                const domain = new URL(url).hostname;
+                const uniqueKey = url;
+                searchResults.push({ url: url, domain: domain });
+                // Cache the element using its URL as the unique key
+                CACHED_LINKS.set(uniqueKey, link);
+            } catch (e) {
+                // Ignore invalid URLs
+            }
+        }
+    });
+
+    console.log(`Found ${searchResults.length} potential search results.`);
+
+    if (searchResults.length > 0) {
+        sendDataToBackend(searchResults, userQuery);
     }
-  });
-
-  let searchResults = [];
-
-  linkElements.forEach((link) => {
-    const url = link.href;
-    if (url && url.startsWith("http")) {
-      try {
-        const domain = new URL(url).hostname;
-        const uniqueKey = url;
-        searchResults.push({ url: url, domain: domain });
-        CACHED_LINKS.set(uniqueKey, link);
-      } catch (e) {
-        // Ignore invalid URLs
-      }
-    }
-  });
-
-  console.log(`Found ${searchResults.length} potential search results.`);
-
-  if (searchResults.length > 0) {
-    sendDataToBackend(searchResults, userQuery);
-  }
 }
 
 // --- 3. Communication Function (Unchanged) ---
