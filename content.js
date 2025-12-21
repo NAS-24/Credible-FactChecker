@@ -53,42 +53,52 @@ function getUserSearchQuery() {
 // --- 2. Main Execution Function ---
 function mainExecution() {
     const userQuery = getUserSearchQuery();
-    console.log(`User Query Extracted: ${userQuery || "N/A"}`);
-    
-    // FINAL RESILIENT SEARCH: Target common Google anchor tags that hold search titles
-    // This looks for links that are children of divs, which is common for main results.
-    const linkElements = document.querySelectorAll(
-        'div a[jsname]:not([role="button"]):not(.q.qs):not([class*="gb_"])'
-    );
-    // Note: The above selector intentionally excludes buttons and header/menu links.
+    // console.log(`User Query Extracted: ${userQuery || "N/A"}`); 
+    // (Commented out log to reduce noise)
 
+    // NEW STRATEGY: Target the Headers (H3) first. 
+    // This is the most reliable way to distinguish a "Result" from a "Menu Item".
+    const titleElements = document.querySelectorAll('h3');
+    
     let searchResults = [];
 
-    linkElements.forEach((link) => {
-        const url = link.href;
-        
-        // CHECK IF ALREADY PROCESSED
-        if (CACHED_LINKS.has(url)) {
-            return; // Skip this link, we already know about it
-        }
+    titleElements.forEach((title) => {
+        // Find the closest anchor tag wrapper for this title
+        const link = title.closest('a');
 
-        // Proceed only if it's a valid external HTTP/HTTPS link
-        if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
-            try {
-                const domain = new URL(url).hostname;
-                const uniqueKey = url;
-                searchResults.push({ url: url, domain: domain });
-                // Cache the element using its URL as the unique key
-                CACHED_LINKS.set(uniqueKey, link);
-            } catch (e) {
-                // Ignore invalid URLs
+        // Safety checks:
+        // 1. Must be a valid link
+        // 2. Must NOT be already processed (Check Cache)
+        if (link && link.href) {
+            
+            // CHECK IF ALREADY PROCESSED
+            if (CACHED_LINKS.has(link.href)) {
+                return; 
+            }
+
+            const url = link.href;
+
+            // 3. Filter out internal Google links or empty links
+            // We only want external verification targets
+            if (url.startsWith("http") && !url.includes("google.com/search") && !url.includes("google.com/url")) {
+                try {
+                    const domain = new URL(url).hostname;
+                    
+                    // Add to our list to send to backend
+                    searchResults.push({ url: url, domain: domain });
+                    
+                    // Cache it immediately so we don't process it again
+                    CACHED_LINKS.set(url, link);
+                    
+                } catch (e) {
+                    // Ignore invalid URLs
+                }
             }
         }
     });
 
-    console.log(`Found ${searchResults.length} potential search results.`);
-
     if (searchResults.length > 0) {
+        console.log(`[DOM] Found ${searchResults.length} new organic results.`);
         sendDataToBackend(searchResults, userQuery);
     }
 }
