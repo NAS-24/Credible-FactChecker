@@ -9,7 +9,7 @@
     text-align: left !important;
 
     /* If the parent is still mirrored, this double-flip ensures text is readable */
-    transform: rotateX(180deg) !important;
+    /* transform: rotateX(180deg) !important; */
 
     /* Box Model & Positioning */
     display: inline-flex;
@@ -51,7 +51,7 @@
 
 .credible-tag:hover {
     /* Safe lift effect */
-    transform: rotateX(180deg) translateY(2px) !important;
+    transform: translateY(2px) !important;
     opacity: 0.95;
 }
 
