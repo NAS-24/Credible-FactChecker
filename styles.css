@@ -44,12 +44,14 @@
 /* FIX: Target ALL inner elements inside the tag (The text inside the <bdi> tag) */
 .credible-tag * {
     direction: ltr !important;
-    unicode-bidi: unset !important;
+    unicode-bidi: plaintext !important;
+    display: inline-block !important;
+    transform: none !important;
 }
 
 .credible-tag:hover {
     /* Safe lift effect */
-    transform: translateY(-2px);
+    transform: rotateX(180deg) rotateY(180deg) translateY(2px) !important;
     opacity: 0.95;
 }
 
