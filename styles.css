@@ -8,6 +8,9 @@
     unicode-bidi: plaintext !important;
     text-align: left !important;
 
+    /* If the parent is still mirrored, this double-flip ensures text is readable */
+    transform: rotateX(180deg) rotateY(180deg) !important;
+
     /* Box Model & Positioning */
     display: inline-flex;
     align-items: center;
