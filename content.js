@@ -52,54 +52,55 @@ function getUserSearchQuery() {
 
 // --- 2. Main Execution Function ---
 function mainExecution() {
-    const userQuery = getUserSearchQuery();
-    // console.log(`User Query Extracted: ${userQuery || "N/A"}`); 
-    // (Commented out log to reduce noise)
+    // 1. Selector A: Standard Search Results (The Blue Titles)
+    const standardTitles = Array.from(document.querySelectorAll('h3'));
+    
+    // 2. Selector B: "Top Stories" & "News" Cards 
+    // These often don't use H3. They use specific roles or classes.
+    // [role="heading"] catches the card titles safely.
+    const newsTitles = Array.from(document.querySelectorAll('div[role="heading"], div.n0jPhd, a.WlydOe .mCBkyc'));
 
-    // NEW STRATEGY: Target the Headers (H3) first. 
-    // This is the most reliable way to distinguish a "Result" from a "Menu Item".
-    const titleElements = document.querySelectorAll('h3');
+    // Combine them
+    const allCandidates = [...standardTitles, ...newsTitles];
     
     let searchResults = [];
 
-    titleElements.forEach((title) => {
-        // Find the closest anchor tag wrapper for this title
-        const link = title.closest('a');
+    allCandidates.forEach((element) => {
+        // Find the closest anchor tag wrapper (Upwards)
+        let link = element.closest('a');
+        
+        // If not found upwards, check if the element ITSELF is a link (rare but happens)
+        if (!link && element.tagName === 'A') {
+            link = element;
+        }
 
-        // Safety checks:
-        // 1. Must be a valid link
-        // 2. Must NOT be already processed (Check Cache)
         if (link && link.href) {
-            
-            // CHECK IF ALREADY PROCESSED
-            if (CACHED_LINKS.has(link.href)) {
-                return; 
-            }
+            if (CACHED_LINKS.has(link.href)) return; 
 
             const url = link.href;
-
-            // 3. Filter out internal Google links or empty links
-            // We only want external verification targets
-            if (url.startsWith("http") && !url.includes("google.com/search") && !url.includes("google.com/url")) {
-                try {
-                    const domain = new URL(url).hostname;
-                    
-                    // Add to our list to send to backend
-                    searchResults.push({ url: url, domain: domain });
-                    
-                    // Cache it immediately so we don't process it again
-                    CACHED_LINKS.set(url, link);
-                    
-                } catch (e) {
-                    // Ignore invalid URLs
-                }
+            
+            // Filter out Google internal links & empty links
+            if (url.startsWith("http") && !url.includes("google.com/")) {
+                
+                // VISUAL CHECK: Ensure we are tagging the TEXT, not the IMAGE
+                // If the element we found is the headline text, we are good.
+                // We want to avoid injecting the tag on top of the thumbnail image.
+                
+                searchResults.push({ url: url, domain: new URL(url).hostname });
+                
+                // CRITICAL: We map the URL to the specific ELEMENT we want to tag (the text header),
+                // not just the big link container. This ensures the tag sits next to the text.
+                CACHED_LINKS.set(url, element); 
             }
         }
     });
 
     if (searchResults.length > 0) {
-        console.log(`[DOM] Found ${searchResults.length} new organic results.`);
-        sendDataToBackend(searchResults, userQuery);
+        console.log(`[DOM] Found ${searchResults.length} new results.`);
+        const qParam = new URLSearchParams(window.location.search).get("q");
+        const query = qParam ? decodeURIComponent(qParam.replace(/\+/g, " ")) : "";
+        
+        sendDataToBackend(searchResults, query);
     }
 }
 
@@ -171,17 +172,18 @@ function injectVerdictsIntoPage(verdicts) {
       });
 
       // 4. Inject into Page (Using resilient 'after' injection)
-      const injectionPoint =
-        linkElement.querySelector("h3") || linkElement.querySelector("h4");
-
-      if (injectionPoint) {
-        // Inject after the header element (safer than prepending)
-        injectionPoint.after(tag);
+      
+      // --- NEW INJECTION LOGIC ---
+      let targetElement = linkElement;
+    
+      // Check if we can append INSIDE the element (Best for News Cards / Divs)
+      if (targetElement.tagName === 'DIV' || targetElement.tagName === 'H3') {
+           targetElement.appendChild(tag); 
       } else {
-        // Fallback injection after the main link element
-        linkElement.after(tag);
+           // Fallback: Append AFTER the element (Best for standard Links)
+           targetElement.after(tag); 
       }
-
+      
       injectedCount++;
     }
   });
