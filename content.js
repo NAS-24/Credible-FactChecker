@@ -155,8 +155,10 @@ function injectVerdictsIntoPage(verdicts) {
       const tag = document.createElement("span");
       tag.className = `credible-tag ${tagClass}`;
 
-      // NEW CODE (Let CSS handle the direction)
-      tag.textContent = verdict.label;
+      // FINAL FIX FOR MIRRORING (using BDI)
+      const bdiElement = document.createElement("bdi");
+      bdiElement.textContent = verdict.label;
+      tag.appendChild(bdiElement);
 
       // 3. Attach Click Listener (The Pop-up UX with Event Fix)
       tag.addEventListener("click", (event) => {
