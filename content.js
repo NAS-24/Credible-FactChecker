@@ -66,6 +66,12 @@ function mainExecution() {
 
     linkElements.forEach((link) => {
         const url = link.href;
+        
+        // CHECK IF ALREADY PROCESSED
+        if (CACHED_LINKS.has(url)) {
+            return; // Skip this link, we already know about it
+        }
+
         // Proceed only if it's a valid external HTTP/HTTPS link
         if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
             try {
@@ -173,3 +179,37 @@ function injectVerdictsIntoPage(verdicts) {
     `[FRONTEND] Injected ${injectedCount} credibility tags into the search results.`
   );
 }
+
+
+// --- 5. INITIALIZATION & OBSERVER (The "Engine Starter") ---
+
+// A. Run immediately in case the page is already ready
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", mainExecution);
+} else {
+    mainExecution();
+}
+
+// B. Debounce function to prevent spamming the backend while the page loads
+function debounce(func, wait) {
+    let timeout;
+    return function (...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+}
+
+// C. Set up a MutationObserver to watch for new search results (Infinite Scroll / Dynamic Loading)
+const observer = new MutationObserver(debounce(() => {
+    // Only re-run if we find new un-processed links (you might need to update mainExecution to skip already tagged ones)
+    // For now, re-running mainExecution is fine as your map handles caching
+    mainExecution();
+}, 1000)); // Wait 1 second after changes stop before running
+
+// Start observing the body for changes
+observer.observe(document.body, {
+    childList: true,
+    subtree: true
+});
+
+console.log("Credible: Observer attached. Waiting for search results...");
