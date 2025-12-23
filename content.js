@@ -34,8 +34,9 @@ function showPopup(tagElement, htmlContent) {
 }
 
 // --- 1. CONFIGURATION ---
-const BACKEND_ENDPOINT =
-  "https://credible-factchecker.onrender.com/api/check-credibility";
+const BACKEND_ENDPOINT = "https://credible-factchecker.onrender.com/api/check-credibility";
+const VERIFY_ENDPOINT = "https://credible-factchecker.onrender.com/api/verify-text";
+
 const CACHED_LINKS = new Map();
 
 // Function to extract the user's search query from the URL bar (e.g., from ?q=...)
@@ -225,3 +226,98 @@ observer.observe(document.body, {
 });
 
 console.log("Credible: Observer attached. Waiting for search results...");
+
+
+// =========================================================
+// TIER 2: SELECTION VERIFICATION (Agentic Check)
+// =========================================================
+
+// 1. Listen for the message from background.js (Right-Click)
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "verify_selection") {
+        handleSelectionVerification(request.text);
+    }
+});
+
+// 2. Main Handler for Highlight Verification
+async function handleSelectionVerification(text) {
+    // A. Create a temporary "Anchor" element to position the popup
+    // We do this because showPopup() expects a DOM element to position against,
+    // but a text selection isn't a single element. We fake it.
+    const selection = window.getSelection();
+    if (selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+
+    // Create invisible 1x1 pixel anchor at the selection start
+    const tempAnchor = document.createElement("span");
+    tempAnchor.style.position = "fixed";
+    tempAnchor.style.left = rect.left + "px";
+    tempAnchor.style.top = rect.top + "px";
+    tempAnchor.style.width = "1px";
+    tempAnchor.style.height = "1px";
+    tempAnchor.style.opacity = "0"; // Invisible
+    document.body.appendChild(tempAnchor);
+
+    // B. Show "Thinking..." State immediately
+    // We reuse your existing showPopup function!
+    showPopup(tempAnchor, `
+        <div style="padding: 10px; font-family: sans-serif; color: #333;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                <div class="credible-spinner" style="width: 16px; height: 16px; border: 2px solid #ccc; border-top-color: #333; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <strong>Agent is verifying...</strong>
+            </div>
+            <p style="margin: 0; font-size: 12px; color: #666;">Checking against official sources.</p>
+        </div>
+        <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
+    `);
+
+    try {
+        // C. Call the New Agentic Backend
+        const response = await fetch(VERIFY_ENDPOINT, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: text })
+        });
+
+        if (!response.ok) throw new Error("Backend connection failed");
+
+        const result = await response.json();
+
+        // D. Determine Color based on Verdict
+        let color = "#ffa500"; // Orange (Unverified/Misleading)
+        if (result.verdict === "VERIFIED") color = "#28a745"; // Green
+        if (result.verdict === "FALSE") color = "#dc3545"; // Red
+
+        // E. Format the Final HTML
+        const htmlContent = `
+            <div style="max-width: 300px; padding: 10px; font-family: sans-serif;">
+                <h3 style="margin: 0 0 8px 0; color: ${color}; font-size: 16px; display: flex; align-items: center; justify-content: space-between;">
+                    ${result.verdict}
+                    <span style="font-size: 10px; color: #999; border: 1px solid #ddd; padding: 2px 5px; border-radius: 4px;">Confidence: ${(result.confidence_score * 100).toFixed(0)}%</span>
+                </h3>
+                <p style="margin: 0 0 10px 0; font-size: 13px; line-height: 1.4; color: #333;">
+                    ${result.explanation}
+                </p>
+                <div style="font-size: 11px; background: #f8f9fa; padding: 5px; border-radius: 4px;">
+                    <strong style="color: #555;">Primary Source:</strong><br>
+                    ${result.sources.length > 0 
+                        ? `<a href="${result.sources[0]}" target="_blank" style="color: #007bff; text-decoration: none; word-break: break-all;">${new URL(result.sources[0]).hostname}</a>` 
+                        : "No direct source found."}
+                </div>
+            </div>
+        `;
+
+        // F. Update the popup with real data
+        showPopup(tempAnchor, htmlContent);
+
+    } catch (error) {
+        showPopup(tempAnchor, `
+            <div style="padding: 10px; color: #dc3545; font-family: sans-serif;">
+                <strong>Error:</strong> ${error.message}<br>
+                <span style="font-size: 11px; color: #666;">Is the local backend running?</span>
+            </div>
+        `);
+    }
+}

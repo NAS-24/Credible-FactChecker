@@ -13,10 +13,8 @@
   "content_scripts": [
     {
       "matches": [
-        "*://*.google.com/search?*",
-        "*://*.bing.com/search?*",
-        "*://*.duckduckgo.com/?*"
-      ],
+        "<all_urls>" 
+      ], 
       "js": ["content.js"],
       "css": ["styles.css"],
       "run_at": "document_idle"
@@ -31,12 +29,12 @@
 
   "action": {
     "default_icon": "icons/icon48.png",
-    "default_title": "Credible: Full Scan"
+    "default_title": "Credible: Full Scan",
+    "default_popup": "popup.html" 
   },
 
   "host_permissions": [
-    "https://www.google.com/*",
-    "https://*.google.com/*",
+    "http://localhost:8000/*", 
     "https://credible-factchecker.onrender.com/*",
     "http://*/*",
     "https://*/*"

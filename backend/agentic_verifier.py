@@ -1,0 +1,193 @@
+import os
+import json
+import asyncio
+from decouple import config
+from groq import AsyncGroq  # The Brain (Llama 3.3)
+from tavily import TavilyClient # The Eyes (Search)
+from pydantic import BaseModel, Field, ValidationError
+from typing import List, Optional
+
+# --- CONFIGURATION ---
+MODEL_NAME = "llama-3.3-70b-versatile" # Fast, Free, Smart
+
+INDIA_AUTHORITY_DOMAINS = [
+    "altnews.in", "boomlive.in", "thequint.com", "factly.in", 
+    "pib.gov.in", "who.int", "cdc.gov", "reuters.com", "apnews.com", "scroll.in"
+]
+
+# --- PYDANTIC MODELS (Data Safety) ---
+class FactualClaim(BaseModel):
+    claim_text: str = Field(description="The exact sentence extracted from text.")
+    context: str = Field(description="Brief context summary.")
+
+class ClaimList(BaseModel):
+    claims: List[FactualClaim]
+
+class VerificationResult(BaseModel):
+    verdict: str = Field(description="VERIFIED, FALSE, MISLEADING, or UNVERIFIED")
+    confidence_score: float = Field(description="0.0 to 1.0 confidence.")
+    explanation: str = Field(description="Concise proof summary.")
+    sources: List[str] = Field(description="List of supporting URLs.")
+
+# --- THE AGENT CLASS ---
+class AgenticVerifier:
+    def __init__(self):
+        try:
+            self.llm_client = AsyncGroq(api_key=config("GROQ_API_KEY"))
+            self.search_client = TavilyClient(api_key=config("TAVILY_API_KEY"))
+            print("✅ Production Agent Initialized (Groq + Tavily).")
+        except Exception as e:
+            print(f"❌ Init Error: {e}")
+            self.llm_client = None
+
+    # ------------------------------------------------------------------
+    # TIER 3: EXTRACT CLAIMS (Restored Logic)
+    # ------------------------------------------------------------------
+    async def isolate_claims(self, article_content: str) -> List[str]:
+        """
+        Scans a full article and extracts 3-5 verifiable factual claims.
+        """
+        if not self.llm_client: return []
+
+        system_instruction = (
+            "You are an expert data extraction agent. "
+            "Extract 3-5 distinct, verifiable factual claims from the text. "
+            "Ignore opinions. Return JSON only."
+        )
+
+        prompt = f"""
+        **TEXT TO ANALYZE:**
+        {article_content[:25000]} # Limit text to avoid token overflow
+        
+        **OUTPUT FORMAT (JSON):**
+        {{
+            "claims": [
+                {{"claim_text": "Exact quote 1", "context": "Context 1"}},
+                {{"claim_text": "Exact quote 2", "context": "Context 2"}}
+            ]
+        }}
+        """
+
+        try:
+            response = await self.llm_client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=[
+                    {"role": "system", "content": system_instruction},
+                    {"role": "user", "content": prompt}
+                ],
+                response_format={"type": "json_object"}, # Native JSON mode
+                temperature=0.1
+            )
+            
+            # Parse & Validate
+            raw_json = json.loads(response.choices[0].message.content)
+            validated_data = ClaimList(**raw_json) # Pydantic Check
+            
+            # Return list of strings for the frontend
+            return [c.claim_text for c in validated_data.claims]
+
+        except Exception as e:
+            print(f"⚠️ Extraction Failed: {e}")
+            return []
+
+    # ------------------------------------------------------------------
+    # INTERNAL: SEARCH TOOL (The "Eyes")
+    # ------------------------------------------------------------------
+    async def _perform_search(self, query: str) -> str:
+        try:
+            print(f"🔎 Searching: {query}")
+            response = await asyncio.to_thread(
+                self.search_client.search,
+                query=query,
+                search_depth="basic",
+                include_domains=INDIA_AUTHORITY_DOMAINS, # Hard Filter
+                max_results=5
+            )
+            
+            context = []
+            for result in response.get('results', []):
+                context.append(f"Source: {result['url']}\nContent: {result['content']}\n")
+            
+            return "\n".join(context) if context else ""
+        except Exception as e:
+            print(f"⚠️ Search Error: {e}")
+            return ""
+
+    # ------------------------------------------------------------------
+    # TIER 2: VERIFY CLAIM (The "Brain")
+    # ------------------------------------------------------------------
+    async def verify_claim_agentic(self, claim_text: str) -> dict:
+        if not self.llm_client:
+            return VerificationResult(verdict="ERROR", confidence_score=0.0, explanation="Offline", sources=[]).dict()
+
+        # 1. First Search Attempt
+        evidence = await self._perform_search(claim_text)
+
+        # 2. Self-Correction Loop (Simple Agentic Behavior)
+        # If no evidence found, try a broader keyword search
+        if not evidence:
+            print("🔄 Evidence weak. Retrying with 'Fact Check' keywords...")
+            evidence = await self._perform_search(f"fact check {claim_text} official data")
+
+        # 3. Reasoning with Groq
+        system_instruction = (
+            "You are Credible, a strict fact-checking AI. "
+            "Compare the Claim vs Evidence. "
+            "If evidence is from trusted sources (PIB, AltNews), trust it implicitly. "
+            "Output JSON."
+        )
+
+        prompt = f"""
+        **CLAIM:** "{claim_text}"
+        
+        **EVIDENCE:**
+        {evidence[:6000] if evidence else "No direct evidence found."}
+        
+        **INSTRUCTIONS:**
+        - VERIFIED: Evidence confirms the claim.
+        - FALSE: Evidence contradicts the claim.
+        - MISLEADING: Claim is partially true but misses context.
+        - UNVERIFIED: No matching evidence found.
+        
+        **REQUIRED JSON FORMAT:**
+        {{
+            "verdict": "VERIFIED" | "FALSE" | "MISLEADING" | "UNVERIFIED",
+            "confidence_score": 0.9,
+            "explanation": "2 sentence summary.",
+            "sources": ["extracted_url_1"]
+        }}
+        """
+
+        try:
+            response = await self.llm_client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=[
+                    {"role": "system", "content": system_instruction},
+                    {"role": "user", "content": prompt}
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.0
+            )
+
+            raw_json = json.loads(response.choices[0].message.content)
+            
+            # Pydantic Validation ensures safe output for your Frontend
+            result = VerificationResult(**raw_json)
+            return result.dict()
+
+        except ValidationError as e:
+            print(f"⚠️ Validation Error: {e}")
+            return {
+                "verdict": "UNVERIFIED", 
+                "confidence_score": 0.0,
+                "explanation": "AI output format invalid.", 
+                "sources": []
+            }
+        except Exception as e:
+            print(f"⚠️ Verification Failed: {e}")
+            return {
+                "verdict": "UNVERIFIED", 
+                "confidence_score": 0.0,
+                "explanation": "Analysis failed.", 
+                "sources": []
+            }
