@@ -11,8 +11,16 @@ from typing import List, Optional
 MODEL_NAME = "llama-3.3-70b-versatile" # Fast, Free, Smart
 
 INDIA_AUTHORITY_DOMAINS = [
-    "altnews.in", "boomlive.in", "thequint.com", "factly.in", 
-    "pib.gov.in", "who.int", "cdc.gov", "reuters.com", "apnews.com", "scroll.in"
+    # 1. Fact Checkers (For debunking)
+    "altnews.in", "boomlive.in", "thequint.com", "factly.in", "vishvasnews.com",
+    
+    # 2. Government & Official (For data)
+    "pib.gov.in", "who.int", "rbi.org.in", "sci.gov.in", # Supreme Court of India
+    
+    # 3. Tier 1 Reputable News (For breaking events)
+    "thehindu.com", "indianexpress.com", "ndtv.com", 
+    "livemint.com", "timesofindia.indiatimes.com", "hindustantimes.com",
+    "reuters.com", "bbc.com", "ptinews.com" # Press Trust of India
 ]
 
 # --- PYDANTIC MODELS (Data Safety) ---
