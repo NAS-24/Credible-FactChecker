@@ -1,127 +1,110 @@
-// popup.js - Production Agentic Version
+// popup.js - FINAL (Background Relay Version)
 
-const API_BASE = "https://credible-factchecker.onrender.com/api";
+document.addEventListener("DOMContentLoaded", async () => {
+  const scanBtn = document.getElementById("fullScanButton"); 
+  const statusMsg = document.getElementById("status");       
+  const listElement = document.getElementById("claimsList"); 
 
-// --- 1. Get Current Tab ---
-async function getCurrentTabUrl() {
-  let queryOptions = { active: true, currentWindow: true };
-  let [tab] = await chrome.tabs.query(queryOptions);
-  return tab ? tab.url : null;
-}
+  // 1. Get Current Tab
+  let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-// --- 2. Main Scan Function (Tier 3 Extraction) ---
-async function performScan(url) {
-  const statusElement = document.getElementById('status');
-  const listElement = document.getElementById('claimsList'); // Ensure this exists in HTML
-  const scanButton = document.getElementById('fullScanButton');
+  if (!tab || !tab.url.startsWith("http")) {
+    statusMsg.innerText = "Cannot scan this page.";
+    scanBtn.disabled = true;
+    return;
+  }
 
-  // Reset UI
-  statusElement.textContent = "Agent is reading article... (Extracting Claims)";
-  statusElement.style.color = "#666";
-  listElement.innerHTML = "";
-  scanButton.disabled = true;
+  // 2. MAIN CLICK LISTENER (Triggers Tier 3 Scan)
+  scanBtn.addEventListener("click", () => {
+    // UI Updates
+    scanBtn.disabled = true;
+    scanBtn.innerText = "Agent is reading...";
+    statusMsg.innerText = "Extracting claims...";
+    listElement.innerHTML = "";
 
-  try {
-    // A. Call Extraction Endpoint
-    const response = await fetch(`${API_BASE}/extract-claims`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: url }) // Matches Pydantic 'ArticleRequest'
+    // SEND MESSAGE TO BACKGROUND (The Relay)
+    // We don't fetch here; we ask background.js to do it.
+    chrome.runtime.sendMessage({ 
+      action: "SCAN_ARTICLE", 
+      url: tab.url 
     });
+  });
 
-    if (!response.ok) {
-      throw new Error(`Server Error: ${response.status}`);
+  // 3. LISTEN FOR SCAN RESULTS (From Background)
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.action === "SCAN_RESULT") {
+      handleScanResult(message.data);
     }
+    if (message.action === "SCAN_ERROR") {
+      statusMsg.innerText = "Error: " + message.error;
+      statusMsg.style.color = "red";
+      scanBtn.disabled = false;
+      scanBtn.innerText = "Scan Article";
+    }
+  });
 
-    const data = await response.json();
+  // 4. RENDER LOGIC
+  function handleScanResult(data) {
+    scanBtn.innerText = "Scan Complete";
+    scanBtn.disabled = false;
 
-    // B. Handle Results
     if (!data.claims || data.claims.length === 0) {
-      statusElement.textContent = "No verifiable claims found.";
+      statusMsg.innerText = "No verifiable claims found.";
       return;
     }
 
-    statusElement.textContent = `Found ${data.claims.length} claims. Click one to verify.`;
-    
-    // C. Render the Interactive List
+    statusMsg.innerText = `Found ${data.claims.length} claims. Click to verify.`;
+
     data.claims.forEach(claimText => {
       const li = document.createElement("li");
-      li.className = "claim-item"; // Add styling for this class in CSS
-      li.textContent = claimText;
+      li.className = "claim-item";
+      li.innerText = claimText;
       li.style.cursor = "pointer";
       li.style.padding = "8px";
       li.style.borderBottom = "1px solid #eee";
 
-      // Add Click Listener for Tier 2 Verification
-      li.addEventListener("click", () => verifySpecificClaim(li, claimText));
-      
+      // Tier 2 Verification Logic (Clicking a specific claim)
+      li.addEventListener("click", () => {
+        if (li.dataset.verifying === "true") return;
+        li.dataset.verifying = "true";
+        li.style.opacity = "0.6";
+        li.innerText = "Verifying...";
+
+        // Send 'verify' request to background
+        chrome.runtime.sendMessage({
+          action: "VERIFY_CLAIM_POPUP",
+          text: claimText
+        }, (response) => {
+           // Callback function triggers when background.js finishes
+           updateClaimUI(li, response);
+        });
+      });
+
       listElement.appendChild(li);
     });
-
-  } catch (error) {
-    statusElement.textContent = "Error: " + error.message;
-    statusElement.style.color = "#ef4444";
-  } finally {
-    scanButton.disabled = false;
   }
-}
 
-// --- 3. Individual Claim Verification (Tier 2) ---
-async function verifySpecificClaim(liElement, claimText) {
-  // Prevent double clicks
-  if (liElement.dataset.loading === "true") return;
-  liElement.dataset.loading = "true";
+  // 5. UPDATE UI AFTER VERIFICATION
+  function updateClaimUI(li, result) {
+    if (!result || result.error) {
+      li.innerText = "Error verifying.";
+      li.style.opacity = "1";
+      return;
+    }
 
-  const originalText = liElement.textContent;
-  liElement.textContent = "Verifying with Agent... ⏳";
-  liElement.style.opacity = "0.7";
-
-  try {
-    const response = await fetch(`${API_BASE}/verify-text`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: claimText }) // Matches 'VerifyRequest'
-    });
-
-    const result = await response.json();
-
-    // Update UI with Verdict
     const color = result.verdict === "VERIFIED" ? "green" : 
                   result.verdict === "FALSE" ? "red" : "orange";
-
-    liElement.innerHTML = `
+                  
+    li.innerHTML = `
       <div style="border-left: 4px solid ${color}; padding-left: 8px;">
         <strong style="color:${color}">${result.verdict}</strong>
         <p style="margin: 4px 0; font-size: 0.9em; color: #333;">${result.explanation}</p>
         <div style="font-size: 0.8em; color: #666;">
-           ${result.sources.length ? `<a href="${result.sources[0]}" target="_blank">Source Link</a>` : ""}
+           ${result.sources.length ? `<a href="${result.sources[0]}" target="_blank" style="color:007bff;">Source</a>` : ""}
         </div>
       </div>
     `;
-    liElement.style.opacity = "1";
-    liElement.style.cursor = "default";
-
-  } catch (error) {
-    li.textContent = originalText; // Revert on error
-    alert("Verification failed. Is backend running?");
-    li.dataset.loading = "false";
-  }
-}
-
-// --- 4. Initialization ---
-document.addEventListener('DOMContentLoaded', async () => {
-  const url = await getCurrentTabUrl();
-  const urlDisplay = document.getElementById('urlDisplay');
-  const scanButton = document.getElementById('fullScanButton');
-
-  if (url && url.startsWith('http')) {
-    urlDisplay.textContent = `Analyzing: ${new URL(url).hostname}`;
-    
-    // Attach Listener
-    scanButton.addEventListener('click', () => performScan(url));
-    
-  } else {
-    urlDisplay.textContent = "Invalid Page";
-    scanButton.disabled = true;
+    li.style.opacity = "1";
+    li.style.cursor = "default";
   }
 });
