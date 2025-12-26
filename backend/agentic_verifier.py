@@ -41,8 +41,14 @@ class VerificationResult(BaseModel):
 class AgenticVerifier:
     def __init__(self):
         try:
+            # 1. Initialize Clients
             self.llm_client = AsyncGroq(api_key=config("GROQ_API_KEY"))
             self.search_client = TavilyClient(api_key=config("TAVILY_API_KEY"))
+            
+            # 2. Define Models
+            self.verify_model = MODEL_NAME  # Big Brain (70B) for Accuracy
+            self.fast_model = "llama-3.1-8b-instant" # Fast Brain (8B) for Speed
+            
             print("✅ Production Agent Initialized (Groq + Tavily).")
         except Exception as e:
             print(f"❌ Init Error: {e}")
@@ -57,6 +63,9 @@ class AgenticVerifier:
         """
         if not self.llm_client: return []
 
+        # Limit text to 15k chars to prevent "heavy" processing
+        shortened_text = article_content[:15000]
+
         system_instruction = (
             "You are an expert data extraction agent. "
             "Extract 3-5 distinct, verifiable factual claims from the text. "
@@ -65,7 +74,7 @@ class AgenticVerifier:
 
         prompt = f"""
         **TEXT TO ANALYZE:**
-        {article_content[:25000]} # Limit text to avoid token overflow
+        {shortened_text}
         
         **OUTPUT FORMAT (JSON):**
         {{
@@ -77,21 +86,21 @@ class AgenticVerifier:
         """
 
         try:
+            # ⭐ CRITICAL CHANGE: Using the FAST MODEL here
             response = await self.llm_client.chat.completions.create(
-                model=MODEL_NAME,
+                model=self.fast_model,  # <--- Using 8b-instant
                 messages=[
                     {"role": "system", "content": system_instruction},
                     {"role": "user", "content": prompt}
                 ],
-                response_format={"type": "json_object"}, # Native JSON mode
-                temperature=0.1
+                response_format={"type": "json_object"}, 
+                temperature=0.1 # Low temp for speed
             )
             
             # Parse & Validate
             raw_json = json.loads(response.choices[0].message.content)
-            validated_data = ClaimList(**raw_json) # Pydantic Check
+            validated_data = ClaimList(**raw_json) 
             
-            # Return list of strings for the frontend
             return [c.claim_text for c in validated_data.claims]
 
         except Exception as e:

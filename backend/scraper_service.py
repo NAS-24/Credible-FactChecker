@@ -32,34 +32,54 @@ async def fetch_article_content(url: str) -> Tuple[Optional[str], str]:
     if SCRAPING_API_KEY == 'YOUR_SCRAPING_SERVICE_API_KEY':
         return None, "Error: Scraping API key is not configured."
 
-    payload = {
-        'api_key': SCRAPING_API_KEY,
-        'url': url,
-        'render': 'true',  # Essential for JS sites
-        'timeout': 60.0
-    }
-    
     async with httpx.AsyncClient() as client:
+        
+        # --- ATTEMPT 1: FAST MODE (Render = False) ---
+        # This takes 1-2 seconds. Works for 95% of news sites.
+        print(f"🚀 Attempting Fast Scrape: {url}")
+        fast_payload = {
+            'api_key': SCRAPING_API_KEY,
+            'url': url,
+            'render': 'false',  # <--- SPEED OPTIMIZATION
+            'autoparse': 'true' # Ask ScraperAPI to help find the main text
+        }
+        
         try:
-            response = await client.get(SCRAPING_BASE_URL, params=payload, timeout=60.0)
+            response = await client.get(SCRAPING_BASE_URL, params=fast_payload, timeout=15.0)
+            if response.status_code == 200:
+                raw_html = response.text
+                cleaned_text = quick_clean_html(raw_html)
+                
+                # Validation: Did we actually get the article?
+                if len(cleaned_text) > 600:
+                    print("✅ Fast Scrape Success!")
+                    return cleaned_text, "Success: Retrieved via Fast Mode."
+                else:
+                    print(f"⚠️ Fast scrape too short ({len(cleaned_text)} chars). Retrying with JS...")
+            
+        except Exception as e:
+            print(f"⚠️ Fast scrape failed: {e}. Retrying...")
+
+        # --- ATTEMPT 2: SLOW MODE (Fallback if Fast Mode failed) ---
+        # This takes 15-20 seconds, but guarantees it works for tricky sites.
+        print("🐢 Falling back to JS Rendering...")
+        slow_payload = {
+            'api_key': SCRAPING_API_KEY,
+            'url': url,
+            'render': 'true',   # <--- The "Heavy" Fix
+            'timeout': 60.0
+        }
+        
+        try:
+            response = await client.get(SCRAPING_BASE_URL, params=slow_payload, timeout=60.0)
             response.raise_for_status()
             
             raw_html = response.text
-            
-            # --- CRITICAL IMPROVEMENT ---
-            # We clean the text BEFORE sending to the LLM.
-            # This ensures the 25,000 char limit captures the ARTICLE, not the MENU.
             cleaned_text = quick_clean_html(raw_html)
             
-            print("\n--- DEBUG: CLEANED TEXT INPUT ---")
-            print(cleaned_text[:500]) 
-            print("---------------------------------\n")
-            
-            return cleaned_text, "Success: Content retrieved and cleaned."
+            return cleaned_text, "Success: Content retrieved (JS Mode)."
 
         except httpx.HTTPStatusError as e:
-            status = f"HTTP Error {e.response.status_code}: Blocked by anti-bot. Check URL/Key."
-            return None, status
+            return None, f"HTTP Error {e.response.status_code}: Scraper blocked."
         except Exception as e:
-            status = f"Request Error: {e}"
-            return None, status
+            return None, f"Request Error: {e}"
