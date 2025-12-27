@@ -6,7 +6,6 @@ from groq import AsyncGroq  # The Brain (Llama 3.3)
 from tavily import TavilyClient # The Eyes (Search)
 from pydantic import BaseModel, Field, ValidationError
 from typing import List, Optional
-from duckduckgo_search import DDGS # The Eyes (Search-Backup)
 
 # --- CONFIGURATION ---
 MODEL_NAME = "llama-3.3-70b-versatile" # Fast, Free, Smart
@@ -45,13 +44,12 @@ class AgenticVerifier:
             # 1. Initialize Clients
             self.llm_client = AsyncGroq(api_key=config("GROQ_API_KEY"))
             self.search_client = TavilyClient(api_key=config("TAVILY_API_KEY"))
-            self.ddg_client = DDGS() # <--- Initialize Backup Search
-
+            
             # 2. Define Models
             self.verify_model = MODEL_NAME  # Big Brain (70B) for Accuracy
             self.fast_model = "llama-3.1-8b-instant" # Fast Brain (8B) for Speed
-
-            print("✅ Production Agent Initialized (Groq + Tavily) + DUCKDUCKGO (Backup).")
+            
+            print("✅ Production Agent Initialized (Groq + Tavily).")
         except Exception as e:
             print(f"❌ Init Error: {e}")
             self.llm_client = None
@@ -110,57 +108,26 @@ class AgenticVerifier:
             return []
 
     # ------------------------------------------------------------------
-    # INTERNAL: SEARCH TOOL (The "Eyes" - Master Version)
+    # INTERNAL: SEARCH TOOL (The "Eyes")
     # ------------------------------------------------------------------
     async def _perform_search(self, query: str) -> str:
-        """
-        1. Tries Tavily (Strict Mode with India Domains).
-        2. If Tavily fails or runs out of credits, falls back to DuckDuckGo.
-        """
-        results = []
-        
-        # --- ATTEMPT 1: TAVILY (The "Ferrari") ---
         try:
-            # print(f"🔍 Tavily Search: {query}")
-            
-            # Using asyncio to prevent blocking the server
-            import asyncio
+            print(f"🔎 Searching: {query}")
             response = await asyncio.to_thread(
-                self.tavily_client.search,
+                self.search_client.search,
                 query=query,
                 search_depth="basic",
-                # Make sure INDIA_AUTHORITY_DOMAINS is defined in your file imports/constants
-                include_domains=INDIA_AUTHORITY_DOMAINS, 
+                include_domains=INDIA_AUTHORITY_DOMAINS, # Hard Filter
                 max_results=5
             )
             
-            for res in response.get('results', []):
-                results.append(f"Source: {res['url']}\nContent: {res['content']}\n")
+            context = []
+            for result in response.get('results', []):
+                context.append(f"Source: {result['url']}\nContent: {result['content']}\n")
             
-            # If we got results, return them immediately
-            if results:
-                return "\n".join(results)
-
+            return "\n".join(context) if context else ""
         except Exception as e:
-            print(f"⚠️ Tavily Failed ({e}). Switching to DuckDuckGo...")
-
-        # --- ATTEMPT 2: DUCKDUCKGO (The "Spare Tire") ---
-        try:
-            print(f"🦆 DDG Fallback Search: {query}")
-            from duckduckgo_search import AsyncDDGS
-            
-            async with AsyncDDGS() as ddgs:
-                # DDG works differently, so we can't use 'include_domains' here easily.
-                # We just do a broad search to ensure we get *some* evidence.
-                ddg_results = await ddgs.text(query, max_results=5)
-                
-                for res in ddg_results:
-                    results.append(f"Source: {res['href']}\nContent: {res['body']}\n")
-                    
-            return "\n".join(results)
-
-        except Exception as ddg_e:
-            print(f"❌ All searches failed: {ddg_e}")
+            print(f"⚠️ Search Error: {e}")
             return ""
 
     # ------------------------------------------------------------------
@@ -168,27 +135,18 @@ class AgenticVerifier:
     # ------------------------------------------------------------------
     async def verify_claim_agentic(self, claim_text: str) -> dict:
         if not self.llm_client:
-            return {
-                "verdict": "ERROR", 
-                "confidence_score": 0.0, 
-                "explanation": "Backend offline.", 
-                "sources": []
-            }
+            return VerificationResult(verdict="ERROR", confidence_score=0.0, explanation="Offline", sources=[]).dict()
 
-        # 1. FIRST SEARCH ATTEMPT (Using Failover Logic)
-        # This will try Tavily -> If it fails -> Try DuckDuckGo
+        # 1. First Search Attempt
         evidence = await self._perform_search(claim_text)
 
-        # 2. SELF-CORRECTION LOOP
-        # If the first search returned nothing (from BOTH engines), try a better keyword.
-        if not evidence or "No evidence found" in evidence:
+        # 2. Self-Correction Loop (Simple Agentic Behavior)
+        # If no evidence found, try a broader keyword search
+        if not evidence:
             print("🔄 Evidence weak. Retrying with 'Fact Check' keywords...")
-            
-            # The retry ALSO uses the fallback logic (Infinite Free Search)
             evidence = await self._perform_search(f"fact check {claim_text} official data")
 
-        # 3. REASONING (LLM Analysis)
-        # (This part remains exactly the same as your code)
+        # 3. Reasoning with Groq
         system_instruction = (
             "You are Credible, a strict fact-checking AI. "
             "Compare the Claim vs Evidence. "
@@ -219,7 +177,7 @@ class AgenticVerifier:
 
         try:
             response = await self.llm_client.chat.completions.create(
-                model=self.verify_model, # Make sure to use the 70B model here
+                model=MODEL_NAME,
                 messages=[
                     {"role": "system", "content": system_instruction},
                     {"role": "user", "content": prompt}
@@ -230,17 +188,23 @@ class AgenticVerifier:
 
             raw_json = json.loads(response.choices[0].message.content)
             
-            # Helper to safely extract sources if the LLM put them in the text
-            # (Optional safety step, your Pydantic model likely handles this)
-            if "sources" not in raw_json: raw_json["sources"] = []
+            # Pydantic Validation ensures safe output for your Frontend
+            result = VerificationResult(**raw_json)
+            return result.dict()
 
-            return raw_json
-
+        except ValidationError as e:
+            print(f"⚠️ Validation Error: {e}")
+            return {
+                "verdict": "UNVERIFIED", 
+                "confidence_score": 0.0,
+                "explanation": "AI output format invalid.", 
+                "sources": []
+            }
         except Exception as e:
             print(f"⚠️ Verification Failed: {e}")
             return {
                 "verdict": "UNVERIFIED", 
-                "confidence_score": 0.0, 
-                "explanation": f"Analysis failed: {str(e)}", 
+                "confidence_score": 0.0,
+                "explanation": "Analysis failed.", 
                 "sources": []
             }
