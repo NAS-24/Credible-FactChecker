@@ -167,3 +167,14 @@ h3#urlDisplay {
 .badge.false { background: #fee2e2; color: #991b1b; }
 .badge.unverified { background: #f3f4f6; color: #4b5563; }
 .badge.misleading { background: #ffedd5; color: #9a3412; }
+
+/* --- FOOTER --- */
+footer {
+  text-align: center;       /* Centers the text */
+  padding: 12px;
+  font-size: 11px;
+  color: var(--text-sub);
+  background: var(--bg-color);
+  border-top: 1px solid var(--border-color);
+  margin-top: auto;         /* Pushes footer to the bottom if content is short */
+}
