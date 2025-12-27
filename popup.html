@@ -5,20 +5,41 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Credible Agent</title>
   <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
-<body>
 
-  <div class="container">
-      <h3 id="urlDisplay">Initializing...</h3>
+<body class="extension-mode">
+
+  <header>
+    <div class="logo-area">
+      <span class="logo-icon">🛡️</span>
+      <h1>Credible</h1>
+    </div>
+    <div class="status-badge" id="connectionStatus">Ready</div>
+  </header>
+
+  <main class="container">
       
-      <button id="fullScanButton" class="scan-btn">Scan Article</button>
+      <div class="action-area">
+        <h3 id="urlDisplay">Current Article</h3>
+        <button id="fullScanButton" class="scan-btn">
+          <span class="btn-icon">🔍</span> Scan Article
+        </button>
+      </div>
       
       <div id="status" class="status-msg"></div>
 
-      <ul id="claimsList" class="claims-list"></ul>
-  </div>
+      <div class="results-area">
+        <ul id="claimsList" class="claims-list">
+          </ul>
+      </div>
+
+  </main>
+
+  <footer>
+    <p>Powered by Agentic AI</p>
+  </footer>
 
   <script src="popup.js"></script>
-
 </body>
 </html>
