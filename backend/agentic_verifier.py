@@ -185,7 +185,7 @@ class AgenticVerifier:
             print("🔄 Evidence weak. Retrying with 'Fact Check' keywords...")
             
             # The retry ALSO uses the fallback logic (Infinite Free Search)
-            evidence = await self._perform_search_with_fallback(f"fact check {claim_text} official data")
+            evidence = await self._perform_search(f"fact check {claim_text} official data")
 
         # 3. REASONING (LLM Analysis)
         # (This part remains exactly the same as your code)
