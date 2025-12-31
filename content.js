@@ -35,68 +35,69 @@ function showPopup(tagElement, htmlContent) {
 
 // --- 1. CONFIGURATION ---
 const BACKEND_ENDPOINT = "https://credible-factchecker.onrender.com/api/check-credibility";
-
 const CACHED_LINKS = new Map();
 
-// Function to extract the user's search query from the URL bar (e.g., from ?q=...)
-function getUserSearchQuery() {
-  try {
-    const urlParams = new URLSearchParams(window.location.search);
-    const query = urlParams.get("q");
-    return query ? decodeURIComponent(query.replace(/\+/g, " ")) : null;
-  } catch (e) {
-    console.error("Could not extract search query from URL:", e);
-    return null;
-  }
+// --- HELPER: Detect Search Engine & Get Selectors ---
+function getEngineConfig() {
+    const hostname = window.location.hostname;
+    
+    if (hostname.includes("google")) {
+        return {
+            name: "Google",
+            containerSelector: "div.g, div[role='heading'], div.n0jPhd", // Main results & News cards
+            titleSelector: "h3, div[role='heading']", // Headlines
+            linkSelector: "a"
+        };
+    } else if (hostname.includes("bing")) {
+        return {
+            name: "Bing",
+            containerSelector: "li.b_algo, div.news-card", // Main results & News
+            titleSelector: "h2, h3", // Bing headlines are often H2
+            linkSelector: "a"
+        };
+    }
+    return null; // Not on a supported site
 }
 
-// --- 2. Main Execution Function ---
+// --- 2. Main Execution Function (Multi-Engine) ---
 function mainExecution() {
-    // 1. Selector A: Standard Search Results (The Blue Titles)
-    const standardTitles = Array.from(document.querySelectorAll('h3'));
-    
-    // 2. Selector B: "Top Stories" & "News" Cards 
-    // These often don't use H3. They use specific roles or classes.
-    // [role="heading"] catches the card titles safely.
-    const newsTitles = Array.from(document.querySelectorAll('div[role="heading"], div.n0jPhd, a.WlydOe .mCBkyc'));
+    const config = getEngineConfig();
+    if (!config) return; // Stop if we aren't on Google or Bing
 
-    // Combine them
-    const allCandidates = [...standardTitles, ...newsTitles];
-    
+    // 1. Find all result containers based on the engine
+    const candidates = document.querySelectorAll(config.containerSelector);
     let searchResults = [];
 
-    allCandidates.forEach((element) => {
-        // Find the closest anchor tag wrapper (Upwards)
-        let link = element.closest('a');
+    candidates.forEach((element) => {
+        // Find the headline text element (for tagging later)
+        const titleElement = element.querySelector(config.titleSelector);
         
-        // If not found upwards, check if the element ITSELF is a link (rare but happens)
-        if (!link && element.tagName === 'A') {
-            link = element;
-        }
-
-        if (link && link.href) {
-            if (CACHED_LINKS.has(link.href)) return; 
-
+        // Find the link (wrapper or child)
+        let link = element.closest(config.linkSelector) || element.querySelector(config.linkSelector);
+        
+        // Validation: Must have a link, a title, and be a valid HTTP URL
+        if (link && link.href && titleElement) {
             const url = link.href;
-            
-            // Filter out Google internal links & empty links
-            if (url.startsWith("http") && !url.includes("google.com/")) {
+
+            if (CACHED_LINKS.has(url)) return; // Skip if already processed
+
+            // Filter out internal engine links (Google/Bing redirects)
+            if (url.startsWith("http") && !url.includes("google.com/") && !url.includes("bing.com/")) {
                 
-                // VISUAL CHECK: Ensure we are tagging the TEXT, not the IMAGE
-                // If the element we found is the headline text, we are good.
-                // We want to avoid injecting the tag on top of the thumbnail image.
-                
+                // Add to list for backend processing
                 searchResults.push({ url: url, domain: new URL(url).hostname });
                 
-                // CRITICAL: We map the URL to the specific ELEMENT we want to tag (the text header),
-                // not just the big link container. This ensures the tag sits next to the text.
-                CACHED_LINKS.set(url, element); 
+                // CRITICAL: Map the URL to the TITLE element (so the tag appears next to the text)
+                CACHED_LINKS.set(url, titleElement); 
             }
         }
     });
 
+    // 2. Send to Backend if we found new items
     if (searchResults.length > 0) {
-        console.log(`[DOM] Found ${searchResults.length} new results.`);
+        console.log(`[DOM] Found ${searchResults.length} new results on ${config.name}.`);
+        
+        // Try to get query from URL, fallback to empty string
         const qParam = new URLSearchParams(window.location.search).get("q");
         const query = qParam ? decodeURIComponent(qParam.replace(/\+/g, " ")) : "";
         
