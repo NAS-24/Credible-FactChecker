@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Credible: Agentic Fact-Checker",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Provides real-time credibility signals on search results using Agentic verification logic.",
 
   "icons": {
@@ -13,7 +13,8 @@
   "content_scripts": [
     {
       "matches": [
-        "<all_urls>" 
+        "*://*.google.com/*",
+        "*://*.bing.com/*" 
       ], 
       "js": ["content.js"],
       "css": ["styles.css"],
