@@ -36,6 +36,8 @@ origins = [
     "https://www.google.com",
     "https://*.google.com", 
     "chrome-extension://*",
+    "https://www.bing.com", 
+    "https://bing.com",
     ] # Change this to your Extension ID for Web Store release
 
 app.add_middleware(
