@@ -35,58 +35,66 @@ function showPopup(tagElement, htmlContent) {
 
 // --- 1. CONFIGURATION ---
 const BACKEND_ENDPOINT = "https://credible-factchecker.onrender.com/api/check-credibility";
+
 const CACHED_LINKS = new Map();
 
-// --- 2. Main Execution Function (The "Headline Hunter" Strategy) ---
+// Function to extract the user's search query from the URL bar (e.g., from ?q=...)
+function getUserSearchQuery() {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const query = urlParams.get("q");
+    return query ? decodeURIComponent(query.replace(/\+/g, " ")) : null;
+  } catch (e) {
+    console.error("Could not extract search query from URL:", e);
+    return null;
+  }
+}
+
+// --- 2. Main Execution Function ---
 function mainExecution() {
-    const hostname = window.location.hostname;
-    let headlineSelector = "";
+    // 1. Selector A: Standard Search Results (The Blue Titles)
+    const standardTitles = Array.from(document.querySelectorAll('h3'));
+    
+    // 2. Selector B: "Top Stories" & "News" Cards 
+    // These often don't use H3. They use specific roles or classes.
+    // [role="heading"] catches the card titles safely.
+    const newsTitles = Array.from(document.querySelectorAll('div[role="heading"], div.n0jPhd, a.WlydOe .mCBkyc'));
 
-    // 1. Determine which headlines to look for
-    if (hostname.includes("google")) {
-        // Google uses <h3> for titles
-        headlineSelector = "h3";
-    } else if (hostname.includes("bing")) {
-        // Bing uses <h2> for titles (and sometimes <h3> for sub-links)
-        headlineSelector = "h2, h3";
-    } else {
-        return; // Not on a supported site
-    }
-
-    // 2. Find ALL headlines on the page
-    const candidates = document.querySelectorAll(headlineSelector);
+    // Combine them
+    const allCandidates = [...standardTitles, ...newsTitles];
+    
     let searchResults = [];
 
-    candidates.forEach((element) => {
-        // 3. Smart Link Detection:
-        // Case A: The headline is INSIDE the link (Google style: <a><h3>Title</h3></a>)
-        // Case B: The headline CONTAINS the link (Bing style: <h2><a href>Title</a></h2>)
-        let link = element.closest("a") || element.querySelector("a");
+    allCandidates.forEach((element) => {
+        // Find the closest anchor tag wrapper (Upwards)
+        let link = element.closest('a');
+        
+        // If not found upwards, check if the element ITSELF is a link (rare but happens)
+        if (!link && element.tagName === 'A') {
+            link = element;
+        }
 
         if (link && link.href) {
+            if (CACHED_LINKS.has(link.href)) return; 
+
             const url = link.href;
-
-            // Prevent processing the same link twice
-            if (CACHED_LINKS.has(url)) return; 
-
-            // 4. Filter out junk (Internal Google/Bing links, ads, empty links)
-            // We want only real external URLs (http/https)
-            if (url.startsWith("http") && 
-                !url.includes("google.com/") && 
-                !url.includes("bing.com/") && 
-                !url.includes("googleusercontent") &&
-                !url.includes("microsoft.com")) {
+            
+            // Filter out Google internal links & empty links
+            if (url.startsWith("http") && !url.includes("google.com/")) {
                 
-                // Add to list for backend processing
+                // VISUAL CHECK: Ensure we are tagging the TEXT, not the IMAGE
+                // If the element we found is the headline text, we are good.
+                // We want to avoid injecting the tag on top of the thumbnail image.
+                
                 searchResults.push({ url: url, domain: new URL(url).hostname });
                 
-                // CRITICAL: Cache the HEADLINE element (so the tag sits next to the text)
+                // CRITICAL: We map the URL to the specific ELEMENT we want to tag (the text header),
+                // not just the big link container. This ensures the tag sits next to the text.
                 CACHED_LINKS.set(url, element); 
             }
         }
     });
 
-    // 5. Send to Backend
     if (searchResults.length > 0) {
         console.log(`[DOM] Found ${searchResults.length} new results.`);
         const qParam = new URLSearchParams(window.location.search).get("q");
