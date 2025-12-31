@@ -38,7 +38,7 @@ origins = [
     "chrome-extension://*",
     "https://www.bing.com", 
     "https://bing.com",
-    "https://credible-website.vercel.app/",
+    "https://credible-website.vercel.app",
     ] # Change this to your Extension ID for Web Store release
 
 app.add_middleware(
