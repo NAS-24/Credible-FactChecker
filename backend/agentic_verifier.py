@@ -6,7 +6,6 @@ from groq import AsyncGroq  # The Brain (Llama 3.3)
 from tavily import TavilyClient # The Eyes (Search)
 from pydantic import BaseModel, Field, ValidationError
 from typing import List, Optional
-from urllib.parse import urlparse  # <--- NEW IMPORT
 
 # --- CONFIGURATION ---
 MODEL_NAME = "llama-3.3-70b-versatile" # Fast, Free, Smart
@@ -23,34 +22,6 @@ INDIA_AUTHORITY_DOMAINS = [
     "livemint.com", "timesofindia.indiatimes.com", "hindustantimes.com",
     "reuters.com", "bbc.com", "ptinews.com" # Press Trust of India
 ]
-
-# --- NEW HELPER FUNCTION: BAD URL FILTER ---
-def is_valid_article_url(url: str) -> bool:
-    """
-    Filters out sitemaps, categories, homepages, and non-article pages.
-    Returns True if the URL looks like a specific news article.
-    """
-    bad_patterns = [
-        "/sitemap", "/category/", "/topic/", "/tags/", 
-        "/search", "/index", "facebook.com", "twitter.com", 
-        "instagram.com", "youtube.com", "reddit.com"
-    ]
-    
-    # 1. Block known bad patterns
-    if any(pattern in url.lower() for pattern in bad_patterns):
-        return False
-
-    # 2. Block root domains (e.g., just "timesofindia.indiatimes.com/")
-    try:
-        parsed = urlparse(url)
-        # If path is empty or just "/", it's a homepage, not an article
-        if len(parsed.path) < 2 or parsed.path == "/":
-            return False
-    except:
-        return False
-        
-    return True
-
 
 # --- PYDANTIC MODELS (Data Safety) ---
 class FactualClaim(BaseModel):
@@ -137,39 +108,22 @@ class AgenticVerifier:
             return []
 
     # ------------------------------------------------------------------
-    # INTERNAL: SEARCH TOOL (The "Eyes") - UPDATED LOGIC HERE
+    # INTERNAL: SEARCH TOOL (The "Eyes")
     # ------------------------------------------------------------------
     async def _perform_search(self, query: str) -> str:
         try:
-            # 1. ENHANCE QUERY to force deep links (news reports), not generic pages
-            enhanced_query = f"{query} news report article 2024 2025"
-            print(f"🔎 Searching (Enhanced): {enhanced_query}")
-
+            print(f"🔎 Searching: {query}")
             response = await asyncio.to_thread(
                 self.search_client.search,
-                query=enhanced_query,
+                query=query,
                 search_depth="basic",
                 include_domains=INDIA_AUTHORITY_DOMAINS, # Hard Filter
-                max_results=8 # Increase fetch size since we might filter some out
+                max_results=5
             )
             
             context = []
-            valid_count = 0
-
-            # 2. FILTER LOOP
             for result in response.get('results', []):
-                url = result.get('url', '')
-                
-                # Check if URL is a valid article (not sitemap/home)
-                if is_valid_article_url(url):
-                    context.append(f"Source: {url}\nContent: {result['content']}\n")
-                    valid_count += 1
-                else:
-                    print(f"🗑️ Skipped Bad URL: {url}")
-                
-                # Stop after we have 3 good sources to save context window
-                if valid_count >= 3:
-                    break
+                context.append(f"Source: {result['url']}\nContent: {result['content']}\n")
             
             return "\n".join(context) if context else ""
         except Exception as e:
@@ -187,10 +141,9 @@ class AgenticVerifier:
         evidence = await self._perform_search(claim_text)
 
         # 2. Self-Correction Loop (Simple Agentic Behavior)
-        # If no evidence found (or all filtered out), try a broader keyword search
+        # If no evidence found, try a broader keyword search
         if not evidence:
             print("🔄 Evidence weak. Retrying with 'Fact Check' keywords...")
-            # Try searching specifically for fact checks if normal news fails
             evidence = await self._perform_search(f"fact check {claim_text} official data")
 
         # 3. Reasoning with Groq
