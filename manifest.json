@@ -2,8 +2,9 @@
   "manifest_version": 3,
   "name": "Credible: Agentic Fact-Checker",
   "version": "1.1.0",
-  "description": "Provides real-time credibility signals on search results using Agentic verification logic.",
-
+  "description": "Spot misinformation instantly. Credible uses AI to verify search results and articles in real-time.",
+  "homepage_url": "https://credible-website.vercel.app/",
+  
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -14,15 +15,16 @@
     {
       "matches": [
         "*://*.google.com/*",
-        "*://*.bing.com/*" 
-      ], 
+        "*://*.bing.com/*"
+      ],
       "js": ["content.js"],
       "css": ["styles.css"],
-      "run_at": "document_idle"
+      "run_at": "document_idle",
+      "all_frames": true
     }
   ],
 
-  "permissions": ["activeTab", "contextMenus"],
+  "permissions": ["activeTab", "contextMenus", "scripting"],
 
   "background": {
     "service_worker": "background.js"
@@ -30,7 +32,7 @@
 
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Credible: Full Scan",
+    "default_title": "Credible",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
@@ -39,9 +41,9 @@
   },
 
   "host_permissions": [
-    "http://localhost:8000/*", 
-    "https://credible-factchecker.onrender.com/*",
-    "http://*/*",
-    "https://*/*"
+    "*://*.google.com/*",
+    "*://*.bing.com/*",
+    "http://localhost:8000/*",
+    "https://credible-factchecker.onrender.com/*"
   ]
 }
