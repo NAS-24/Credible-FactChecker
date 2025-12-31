@@ -1,7 +1,7 @@
-// content_bing.js - OPTIMIZED FOR BING
+// content_bing.js - AGGRESSIVE HEADLINE HUNTER
 console.log("Credible: Bing Content Script Loaded!");
 
-// --- POPUP DISPLAY LOGIC (Identical to Google) ---
+// --- POPUP DISPLAY LOGIC (Standard) ---
 function showPopup(tagElement, htmlContent) {
   const existingPopup = document.querySelector(".credible-popup");
   if (existingPopup) existingPopup.remove();
@@ -30,33 +30,33 @@ function showPopup(tagElement, htmlContent) {
 const BACKEND_ENDPOINT = "https://credible-factchecker.onrender.com/api/check-credibility";
 const CACHED_LINKS = new Map();
 
-// --- 2. Main Execution Function (BING SPECIFIC) ---
+// --- 2. Main Execution Function (HEADLINE HUNTER) ---
 function mainExecution() {
-    // Bing uses 'li.b_algo' for main results and 'div.news-card' for news
-    const candidates = document.querySelectorAll("li.b_algo, div.news-card, div.ans");
+    // Bing titles are almost ALWAYS inside <h2> tags. 
+    // Sometimes sub-links are in <h3>.
+    const candidates = document.querySelectorAll("h2, h3"); 
     let searchResults = [];
 
     candidates.forEach((element) => {
-        // Bing headlines are usually in H2
-        const titleElement = element.querySelector("h2, h3");
-        
-        // Find the main link (often inside the H2)
-        const link = element.querySelector("a");
+        // 1. Find the link associated with this headline
+        // Bing logic: The <h2> usually contains the <a> tag directly.
+        let link = element.querySelector("a") || element.closest("a");
 
-        if (link && link.href && titleElement) {
+        if (link && link.href) {
             const url = link.href;
 
             if (CACHED_LINKS.has(url)) return; 
 
-            // Filter out internal Bing links & Ads
+            // 2. Filter out Junk (Bing internal links, Microsoft ads, etc.)
             if (url.startsWith("http") && 
                 !url.includes("bing.com/") && 
-                !url.includes("microsoft.com")) {
+                !url.includes("microsoft.com") && 
+                !url.includes("go.microsoft.com")) {
                 
                 searchResults.push({ url: url, domain: new URL(url).hostname });
                 
-                // CRITICAL: Cache the TITLE element so the tag appears next to the text
-                CACHED_LINKS.set(url, titleElement); 
+                // CRITICAL: Cache the HEADLINE element (so the tag sits next to text)
+                CACHED_LINKS.set(url, element); 
             }
         }
     });
@@ -111,7 +111,7 @@ function injectVerdictsIntoPage(verdicts) {
         showPopup(tag, verdict.tag_reason);
       });
 
-      // Bing headlines are simple, we can usually just append inside the H2
+      // Inject the tag right inside the H2/H3 for perfect alignment
       titleElement.appendChild(tag);
     }
   });
