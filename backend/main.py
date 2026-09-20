@@ -72,7 +72,7 @@ class ArticleRequest(BaseModel):
 
 @app.get("/")
 def health_check():
-    return {"status": "active", "brain": "Llama-3.3-70B (Groq)", "eyes": "Tavily"}
+    return {"status": "active", "brain": "GPT-OSS-120B (Groq)", "eyes": "Tavily"}
 
 # ==============================================================================
 # FEATURE 1: MVP DOMAIN TAGGING (Tier 1)

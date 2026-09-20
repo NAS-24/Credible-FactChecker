@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, ValidationError
 from typing import List, Optional
 
 # --- CONFIGURATION ---
-MODEL_NAME = "llama-3.3-70b-versatile" # Fast, Free, Smart
+MODEL_NAME = "openai/gpt-oss-120b" # Fast, Free, Smart
 
 INDIA_AUTHORITY_DOMAINS = [
     # 1. Fact Checkers (For debunking)
@@ -47,7 +47,7 @@ class AgenticVerifier:
             
             # 2. Define Models
             self.verify_model = MODEL_NAME  # Big Brain (70B) for Accuracy
-            self.fast_model = "llama-3.1-8b-instant" # Fast Brain (8B) for Speed
+            self.fast_model = "openai/gpt-oss-20b" # Fast Brain (20B) for Speed
             
             print("✅ Production Agent Initialized (Groq + Tavily).")
         except Exception as e:
