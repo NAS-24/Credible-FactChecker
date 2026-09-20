@@ -7,7 +7,7 @@
 
   <p align="center">
     <strong>Real-time credibility signals for the modern web.</strong><br>
-    Powered by Agentic AI (Llama-3 + Groq + Tavily).
+    Powered by Agentic AI (GPT-OSS + Groq + Tavily).
   </p>
 
   <p align="center">
@@ -20,7 +20,7 @@
     <a href="LICENSE">
       <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
     </a>
-    <img src="https://img.shields.io/badge/Version-1.6.0-blue?style=for-the-badge" alt="Version">
+    <img src="https://img.shields.io/badge/Version-1.7.0-blue?style=for-the-badge" alt="Version">
   </p>
   
   <br>
@@ -76,7 +76,7 @@ While you browse, Credible's "Fast Brain" scans search results and headlines for
     <td width="50%">
       <h3 align="center">🧠 Hybrid Brain Architecture</h3>
       <p align="center">
-        Uses <b>Llama-3-8B</b> for sub-second classification and <b>Llama-3-70B</b> for complex reasoning and evidence synthesis.
+        Uses <b>GPT-OSS-20B</b> for sub-second claim extraction and <b>GPT-OSS-120B</b> for complex reasoning and evidence synthesis — both served via Groq's ultra-fast LPU inference.
       </p>
     </td>
   </tr>
@@ -97,7 +97,7 @@ To build and modify the extension source code:
 
 ```bash
 # 1. Clone the repo
-git clone [https://github.com/your-username/credible.git](https://github.com/your-username/credible.git)
+git clone https://github.com/NAS-24/Credible-FactChecker.git
 
 # 2. Install Backend Dependencies
 cd backend
@@ -105,3 +105,43 @@ pip install -r requirements.txt
 
 # 3. Start the Agent Server
 uvicorn main:app --reload
+```
+
+### Environment Variables
+Create a `.env` file inside the `backend/` folder:
+
+```env
+GROQ_API_KEY=your_groq_api_key_here
+TAVILY_API_KEY=your_tavily_api_key_here
+```
+
+---
+
+## 🏗️ Architecture
+```
+Browser Extension (Manifest V3)
+│
+├── Tier 1: content_google.js / content_bing.js
+│   └── Domain tagging via credibility_sources.py ledger
+│
+├── Tier 2: background.js → /api/verify-text
+│   └── GPT-OSS-120B reasons against Tavily evidence
+│
+└── Tier 3: popup.js → /api/extract-claims → /api/verify-text
+    ├── scraper_service.py fetches article HTML
+    └── GPT-OSS-20B extracts claims → GPT-OSS-120B verifies each
+```
+
+---
+
+## 📋 Changelog
+
+### v1.7.0 — Model Migration (September 2026)
+- **Migrated Fast Brain**: `llama-3.1-8b-instant` → `openai/gpt-oss-20b` (Groq production stable)
+- **Migrated Slow Brain**: `llama-3.3-70b-versatile` → `openai/gpt-oss-120b` (Groq production stable)
+- Both Llama models were decommissioned by Groq on August 16, 2026
+
+### v1.6.0
+- Initial public release with Hybrid Brain architecture
+- Microsoft Edge Add-ons Store listing live
+- Tavily search integration with India authority domain filtering
